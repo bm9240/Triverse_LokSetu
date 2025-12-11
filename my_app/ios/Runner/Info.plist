@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- LokSetu ProofChain Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>LokSetu needs camera access to capture proof of completed government work</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LokSetu needs photo library access to upload proof images</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LokSetu needs location access to attach GPS coordinates to proof of work</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>LokSetu needs location access to verify work locations</string>
 </dict>
 </plist>
