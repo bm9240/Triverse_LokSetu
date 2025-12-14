@@ -18,9 +18,10 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 60),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 60),
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -72,7 +73,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 40),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 30),
                 child: Column(
@@ -94,10 +95,19 @@ class HomeScreen extends StatelessWidget {
                       route: '/admin',
                       color: Colors.green,
                     ),
+                    const SizedBox(height: 20),
+                    _buildRoleCard(
+                      context,
+                      title: '✨ EasyForm',
+                      subtitle: 'Auto-Fill Government Forms',
+                      description: 'Voice input + AI + OCR for easy form filling',
+                      route: '/easyform',
+                      color: Colors.indigo,
+                    ),
                   ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 30),
               const Padding(
                 padding: EdgeInsets.all(20),
                 child: Text(
@@ -108,7 +118,8 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

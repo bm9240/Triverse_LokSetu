@@ -5,6 +5,7 @@ import '../models/complaint.dart';
 import 'complaint_detail_screen.dart';
 import 'submit_complaint_screen.dart';
 import 'grievbot_screen.dart';
+import 'easyform_screen.dart';
 
 class CitizenScreen extends StatefulWidget {
   const CitizenScreen({super.key});
@@ -142,7 +143,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Choose how to submit complaint:',
+                  'Choose an option:',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 16),
@@ -161,7 +162,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
                   },
                   icon: const Icon(Icons.smart_toy, size: 28),
                   label: const Text(
-                    '🤖 AI Complaint Assistant (Easy)',
+                    '🤖 AI Complaint Assistant',
                     style: TextStyle(fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(

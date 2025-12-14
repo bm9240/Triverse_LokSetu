@@ -66,8 +66,10 @@ dependencies:
   
   # GrievBot - AI Complaint Intake
   google_ml_kit: ^0.18.0  # OCR for image text extraction
+  google_mlkit_text_recognition: ^0.13.1  # Text recognition specifically
   permission_handler: ^11.3.0  # Permissions for mic and camera
   speech_to_text: ^7.3.0  # On-device speech recognition
+  flutter_tts: ^4.2.0  # Text-to-speech for voice guidance
   uuid: ^4.3.3  # Generate unique IDs
 
 dev_dependencies:

@@ -5,10 +5,17 @@ import 'screens/home_screen.dart';
 import 'screens/citizen_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/grievbot_screen.dart'; // GrievBot - AI complaint intake
+import 'screens/easyform_screen.dart'; // EasyForm - Auto-fill forms
 import 'providers/complaint_provider.dart';
 
 Future<void> main() async {
-  await dotenv.load(fileName: ".env");
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print('Error loading .env file: $e');
+    // Continue anyway - app will work without .env for basic features
+  }
   runApp(const LokSetuApp());
 }
 
@@ -43,6 +50,7 @@ class LokSetuApp extends StatelessWidget {
         routes: {
           '/citizen': (context) => const CitizenScreen(),
           '/admin': (context) => const AdminScreen(),
+          '/easyform': (context) => const EasyFormScreen(),
           // Note: GrievBot route requires parameters, use Navigator.push instead
         },
       ),
