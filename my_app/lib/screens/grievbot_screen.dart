@@ -83,7 +83,7 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
         });
         
         // Provide user-friendly error messages
-        String errorMessage = error.errorMsg ?? 'Unknown error';
+        String errorMessage = error.errorMsg;
         if (errorMessage.contains('timeout')) {
           errorMessage = _selectedLanguage == 'hindi' 
               ? 'कोई आवाज़ नहीं सुनाई दी। कृपया फिर से बोलें।'
@@ -168,7 +168,7 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
         });
         
         // Provide user-friendly error messages
-        String errorMessage = error.errorMsg ?? 'Unknown error';
+        String errorMessage = error.errorMsg;
         if (errorMessage.contains('timeout')) {
           errorMessage = _selectedLanguage == 'hindi' 
               ? 'कोई आवाज़ नहीं सुनाई दी। कृपया फिर से बोलें।'

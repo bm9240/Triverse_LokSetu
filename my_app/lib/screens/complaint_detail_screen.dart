@@ -32,6 +32,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(complaint),
+                _buildAutoGovInfo(provider, complaint),
                 _buildComplaintInfo(complaint),
                 if (complaint.imagePath != null) _buildComplaintPhoto(complaint, context),
                 if (complaint.proofChain.isNotEmpty) _buildProofChain(complaint, context),
@@ -229,6 +230,191 @@ class ComplaintDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAutoGovInfo(ComplaintProvider provider, Complaint complaint) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade700, Colors.deepPurple.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AutoGov Engine',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Intelligent Routing Active',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent.shade400,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 14, color: Colors.black87),
+                    SizedBox(width: 4),
+                    Text(
+                      'Active',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Colors.white24, thickness: 1),
+          const SizedBox(height: 12),
+          _buildAutoGovRow(
+            Icons.business,
+            'Department',
+            complaint.autoGovDepartment ?? 'Not assigned',
+            Colors.white,
+          ),
+          const SizedBox(height: 10),
+          _buildAutoGovRow(
+            Icons.priority_high,
+            'Priority',
+            complaint.autoGovPriority ?? 'Not set',
+            Colors.orangeAccent,
+          ),
+          const SizedBox(height: 10),
+          _buildAutoGovRow(
+            Icons.person_outline,
+            'Assigned Officer',
+            complaint.autoGovOfficerName ?? 'Not assigned',
+            Colors.cyanAccent,
+          ),
+          const SizedBox(height: 10),
+          _buildAutoGovRow(
+            Icons.location_city,
+            'Ward/City',
+            '${complaint.autoGovWard ?? "N/A"}, ${complaint.autoGovCity ?? "N/A"}',
+            Colors.white70,
+          ),
+          const SizedBox(height: 10),
+          _buildAutoGovRow(
+            Icons.timer_outlined,
+            'SLA Deadline',
+            complaint.autoGovSlaDeadline != null 
+                ? _formatSlaDeadline(complaint.autoGovSlaDeadline!)
+                : 'Not set',
+            _getSlaColor(complaint.autoGovSlaDeadline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatSlaDeadline(DateTime deadline) {
+    final now = DateTime.now();
+    final difference = deadline.difference(now);
+    
+    if (difference.isNegative) {
+      final overdue = now.difference(deadline);
+      return 'Overdue by ${overdue.inHours}h ${overdue.inMinutes % 60}m';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ${difference.inHours % 24}h remaining';
+    } else {
+      return '${difference.inHours}h ${difference.inMinutes % 60}m remaining';
+    }
+  }
+
+  Color _getSlaColor(DateTime? deadline) {
+    if (deadline == null) return Colors.white70;
+    
+    final now = DateTime.now();
+    final difference = deadline.difference(now);
+    
+    if (difference.isNegative) return Colors.redAccent;
+    if (difference.inHours <= 24) return Colors.orangeAccent;
+    return Colors.greenAccent;
+  }
+
+  Widget _buildAutoGovRow(IconData icon, String label, String value, Color valueColor) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.white70),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  color: valueColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

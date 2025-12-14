@@ -14,6 +14,15 @@ class Complaint {
   final String? imagePath;
   ComplaintStatus status;
   List<ProofChainEntry> proofChain;
+  
+  // AutoGov Engine fields
+  String? autoGovDepartment;
+  String? autoGovPriority;
+  String? autoGovOfficerName;
+  String? autoGovOfficerDesignation;
+  String? autoGovWard;
+  String? autoGovCity;
+  DateTime? autoGovSlaDeadline;
 
   Complaint({
     required this.id,
@@ -31,6 +40,13 @@ class Complaint {
     this.imagePath,
     this.status = ComplaintStatus.submitted,
     List<ProofChainEntry>? proofChain,
+    this.autoGovDepartment,
+    this.autoGovPriority,
+    this.autoGovOfficerName,
+    this.autoGovOfficerDesignation,
+    this.autoGovWard,
+    this.autoGovCity,
+    this.autoGovSlaDeadline,
   }) : proofChain = proofChain ?? [];
 
   void addProof(ProofChainEntry proof) {
@@ -53,6 +69,13 @@ class Complaint {
         'imagePath': imagePath,
         'status': status.toString(),
         'proofChain': proofChain.map((e) => e.toJson()).toList(),
+        'autoGovDepartment': autoGovDepartment,
+        'autoGovPriority': autoGovPriority,
+        'autoGovOfficerName': autoGovOfficerName,
+        'autoGovOfficerDesignation': autoGovOfficerDesignation,
+        'autoGovWard': autoGovWard,
+        'autoGovCity': autoGovCity,
+        'autoGovSlaDeadline': autoGovSlaDeadline?.toIso8601String(),
       };
 
   factory Complaint.fromJson(Map<String, dynamic> json) => Complaint(
@@ -77,6 +100,15 @@ class Complaint {
                 ?.map((e) => ProofChainEntry.fromJson(e))
                 .toList() ??
             [],
+        autoGovDepartment: json['autoGovDepartment'],
+        autoGovPriority: json['autoGovPriority'],
+        autoGovOfficerName: json['autoGovOfficerName'],
+        autoGovOfficerDesignation: json['autoGovOfficerDesignation'],
+        autoGovWard: json['autoGovWard'],
+        autoGovCity: json['autoGovCity'],
+        autoGovSlaDeadline: json['autoGovSlaDeadline'] != null 
+            ? DateTime.parse(json['autoGovSlaDeadline'])
+            : null,
       );
 }
 
