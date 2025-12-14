@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/complaint_provider.dart';
 import '../models/complaint.dart';
 import '../services/location_service.dart';
+import 'complaint_detail_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -71,35 +72,184 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildComplaintCard(Complaint complaint) {
+    final severityColor = _getSeverityColor(complaint.severity);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        title: Text(complaint.title),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(complaint.description, maxLines: 2),
-            const SizedBox(height: 4),
-            Text(
-              'Status: ${complaint.status.displayName}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: severityColor, width: 2),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ComplaintDetailScreenFromAdmin(
+                complaintId: complaint.id,
+                onAddProof: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectedComplaintId = complaint.id;
+                  });
+                },
+              ),
             ),
-          ],
-        ),
-        trailing: ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _selectedComplaintId = complaint.id;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: severityColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: severityColor, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.circle, size: 10, color: severityColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          complaint.severity,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: severityColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      complaint.category,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    complaint.status.emoji,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                complaint.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                complaint.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14),
+              ),
+              if (complaint.duration != null && complaint.duration!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.timer, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Duration: ${complaint.duration}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      complaint.location,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Status: ${complaint.status.displayName}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _getStatusColor(complaint.status),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _selectedComplaintId = complaint.id;
+                      });
+                    },
+                    icon: const Icon(Icons.add_a_photo, size: 16),
+                    label: const Text('Add Proof'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          child: const Text('Add Proof'),
         ),
       ),
     );
+  }
+
+  Color _getSeverityColor(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return Colors.red;
+      case 'high':
+        return Colors.orange;
+      case 'medium':
+        return Colors.yellow[700]!;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusColor(ComplaintStatus status) {
+    switch (status) {
+      case ComplaintStatus.submitted:
+        return Colors.blue;
+      case ComplaintStatus.acknowledged:
+        return Colors.orange;
+      case ComplaintStatus.inProgress:
+        return Colors.purple;
+      case ComplaintStatus.completed:
+        return Colors.green;
+      case ComplaintStatus.rejected:
+        return Colors.red;
+    }
   }
 
   Widget _buildProofUploadScreen() {
@@ -432,5 +582,30 @@ class _ProofUploadWidgetState extends State<ProofUploadWidget> {
     _officerNameController.dispose();
     _officerDesignationController.dispose();
     super.dispose();
+  }
+}
+
+/// Wrapper to show complaint detail screen with "Add Proof" button in admin context
+class ComplaintDetailScreenFromAdmin extends StatelessWidget {
+  final String complaintId;
+  final VoidCallback onAddProof;
+
+  const ComplaintDetailScreenFromAdmin({
+    super.key,
+    required this.complaintId,
+    required this.onAddProof,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ComplaintDetailScreen(complaintId: complaintId),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: onAddProof,
+        backgroundColor: Colors.green,
+        icon: const Icon(Icons.add_a_photo),
+        label: const Text('Add Proof'),
+      ),
+    );
   }
 }

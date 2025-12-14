@@ -3,12 +3,15 @@ class Complaint {
   final String title;
   final String description;
   final String category;
+  final String severity;
+  final String? duration;
   final String location;
   final double latitude;
   final double longitude;
   final DateTime submittedAt;
   final String citizenName;
   final String citizenPhone;
+  final String? imagePath;
   ComplaintStatus status;
   List<ProofChainEntry> proofChain;
 
@@ -17,12 +20,15 @@ class Complaint {
     required this.title,
     required this.description,
     required this.category,
+    required this.severity,
+    this.duration,
     required this.location,
     required this.latitude,
     required this.longitude,
     required this.submittedAt,
     required this.citizenName,
     required this.citizenPhone,
+    this.imagePath,
     this.status = ComplaintStatus.submitted,
     List<ProofChainEntry>? proofChain,
   }) : proofChain = proofChain ?? [];
@@ -36,12 +42,15 @@ class Complaint {
         'title': title,
         'description': description,
         'category': category,
+        'severity': severity,
+        'duration': duration,
         'location': location,
         'latitude': latitude,
         'longitude': longitude,
         'submittedAt': submittedAt.toIso8601String(),
         'citizenName': citizenName,
         'citizenPhone': citizenPhone,
+        'imagePath': imagePath,
         'status': status.toString(),
         'proofChain': proofChain.map((e) => e.toJson()).toList(),
       };
@@ -51,12 +60,15 @@ class Complaint {
         title: json['title'],
         description: json['description'],
         category: json['category'],
+        severity: json['severity'] ?? 'Medium',
+        duration: json['duration'],
         location: json['location'],
         latitude: json['latitude'],
         longitude: json['longitude'],
         submittedAt: DateTime.parse(json['submittedAt']),
         citizenName: json['citizenName'],
         citizenPhone: json['citizenPhone'],
+        imagePath: json['imagePath'],
         status: ComplaintStatus.values.firstWhere(
           (e) => e.toString() == json['status'],
           orElse: () => ComplaintStatus.submitted,

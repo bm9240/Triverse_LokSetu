@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/home_screen.dart';
 import 'screens/citizen_screen.dart';
 import 'screens/admin_screen.dart';
+import 'screens/grievbot_screen.dart'; // GrievBot - AI complaint intake
 import 'providers/complaint_provider.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const LokSetuApp());
 }
 
@@ -40,6 +43,7 @@ class LokSetuApp extends StatelessWidget {
         routes: {
           '/citizen': (context) => const CitizenScreen(),
           '/admin': (context) => const AdminScreen(),
+          // Note: GrievBot route requires parameters, use Navigator.push instead
         },
       ),
     );

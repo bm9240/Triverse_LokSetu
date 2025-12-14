@@ -33,6 +33,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               children: [
                 _buildHeader(complaint),
                 _buildComplaintInfo(complaint),
+                if (complaint.imagePath != null) _buildComplaintPhoto(complaint, context),
                 if (complaint.proofChain.isNotEmpty) _buildProofChain(complaint, context),
               ],
             ),
@@ -104,6 +105,9 @@ class ComplaintDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _buildInfoRow(Icons.title, 'Title', complaint.title),
           _buildInfoRow(Icons.category, 'Category', complaint.category),
+          _buildSeverityRow(complaint.severity),
+          if (complaint.duration != null && complaint.duration!.isNotEmpty)
+            _buildInfoRow(Icons.timer, 'Duration', complaint.duration!),
           _buildInfoRow(Icons.description, 'Description', complaint.description),
           _buildInfoRow(Icons.person, 'Citizen', complaint.citizenName),
           _buildInfoRow(Icons.phone, 'Phone', complaint.citizenPhone),
@@ -144,6 +148,168 @@ class ComplaintDetailScreen extends StatelessWidget {
                   style: const TextStyle(fontSize: 16),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeverityRow(String severity) {
+    Color severityColor;
+    IconData severityIcon;
+    
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        severityColor = Colors.red;
+        severityIcon = Icons.warning;
+        break;
+      case 'high':
+        severityColor = Colors.orange;
+        severityIcon = Icons.priority_high;
+        break;
+      case 'medium':
+        severityColor = Colors.yellow[700]!;
+        severityIcon = Icons.info;
+        break;
+      case 'low':
+        severityColor = Colors.green;
+        severityIcon = Icons.check_circle;
+        break;
+      default:
+        severityColor = Colors.grey;
+        severityIcon = Icons.help;
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(severityIcon, size: 20, color: severityColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Severity',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: severityColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: severityColor, width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.circle, size: 10, color: severityColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        severity,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: severityColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComplaintPhoto(Complaint complaint, BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.photo_camera, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  '📷 Complaint Photo',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Photo'),
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
+                      body: Center(
+                        child: PhotoView(
+                          imageProvider: FileImage(File(complaint.imagePath!)),
+                          minScale: PhotoViewComputedScale.contained,
+                          maxScale: PhotoViewComputedScale.covered * 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(complaint.imagePath!),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            child: Text(
+              'Tap to view full size',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
         ],

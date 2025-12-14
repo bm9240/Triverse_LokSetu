@@ -60,6 +60,16 @@ dependencies:
   
   # Networking
   http: ^1.2.0
+  
+  # Environment Variables
+  flutter_dotenv: ^5.1.0
+  
+  # GrievBot - AI Complaint Intake
+  google_ml_kit: ^0.18.0  # OCR for image text extraction
+  permission_handler: ^11.3.0  # Permissions for mic and camera
+  uuid: ^4.3.3  # Generate unique IDs
+  # Note: Voice input temporarily disabled due to compatibility issues
+  # Can be added later with proper configuration
 
 dev_dependencies:
   flutter_test:
@@ -84,9 +94,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
