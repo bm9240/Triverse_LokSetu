@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/complaint_provider.dart';
 import '../models/complaint.dart';
 import 'complaint_detail_screen.dart';
-import 'submit_complaint_screen.dart';
 import 'grievbot_screen.dart';
 import 'easyform_screen.dart';
 
@@ -155,39 +154,19 @@ class _CitizenScreenState extends State<CitizenScreen> {
                       MaterialPageRoute(
                         builder: (context) => GrievBotScreen(
                           citizenPhone: _phoneNumber,
-                          citizenName: 'Citizen', // Can be updated with actual name
+                          citizenName: 'Citizen',
                         ),
                       ),
                     );
                   },
                   icon: const Icon(Icons.smart_toy, size: 28),
                   label: const Text(
-                    '🤖 AI Complaint Assistant',
+                    '🤖 AI Complaint Assistant (Easy)',
                     style: TextStyle(fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                    minimumSize: const Size(250, 56),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Regular Form Button
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SubmitComplaintScreen(
-                          citizenPhone: _phoneNumber,
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Traditional Form'),
-                  style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     minimumSize: const Size(250, 56),
                   ),
@@ -418,62 +397,13 @@ class _CitizenScreenState extends State<CitizenScreen> {
   }
 
   void _showComplaintOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Choose how to file complaint',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            // GrievBot AI Option
-            ListTile(
-              leading: const Icon(Icons.smart_toy, color: Colors.deepPurple, size: 36),
-              title: const Text(
-                '🤖 AI Assistant (GrievBot)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              subtitle: const Text('Easy - Just describe or take a photo'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GrievBotScreen(
-                      citizenPhone: _phoneNumber,
-                      citizenName: 'Citizen',
-                    ),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            // Traditional Form Option
-            ListTile(
-              leading: const Icon(Icons.edit_note, color: Colors.blue, size: 36),
-              title: const Text(
-                'Traditional Form',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              subtitle: const Text('Standard complaint form'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SubmitComplaintScreen(
-                      citizenPhone: _phoneNumber,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
+    // Directly open GrievBot (AI Assistant only)
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GrievBotScreen(
+          citizenPhone: _phoneNumber,
+          citizenName: 'Citizen',
         ),
       ),
     );
