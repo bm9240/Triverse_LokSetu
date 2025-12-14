@@ -8,8 +8,7 @@ plugins {
 android {
     namespace = "com.example.my_app"
     compileSdk = flutter.compileSdkVersion
-    // Temporarily comment out NDK version to let Gradle handle it automatically
-    // ndkVersion = flutter.ndkVersion
+    ndkVersion = "29.0.14206865"  // Use installed NDK version (backward compatible with speech_to_text)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/grievbot_service.dart';
 import '../services/location_service.dart';
 import '../models/complaint.dart';
@@ -30,21 +31,24 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
   // Services
   final _grievbotService = GrievBotService();
   final _imagePicker = ImagePicker();
+  late stt.SpeechToText _speech;  // STT instance for on-device speech recognition
   
   // Input aggregation
   String? _imageText;
   final _textController = TextEditingController();
-  final _voiceTextController = TextEditingController(); // Manual voice input for now
+  final _voiceTextController = TextEditingController();
   XFile? _capturedImage;
   
   // State
   bool _isProcessing = false;
+  bool _isListening = false;  // Track if STT is actively listening
   String? _currentLocation;
   String _selectedLanguage = 'hindi'; // Default: hindi, english, hinglish
 
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();  // Initialize STT instance
     _getCurrentLocation();
   }
 
@@ -52,7 +56,93 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
   void dispose() {
     _textController.dispose();
     _voiceTextController.dispose();
+    _speech.stop();  // Stop listening when widget is disposed
     super.dispose();
+  }
+
+  /// Toggle Speech-to-Text: Start or Stop listening
+  /// Converts spoken words to text on device and displays in the complaint field
+  Future<void> _toggleSpeechToText() async {
+    if (_isListening) {
+      // Stop listening
+      await _speech.stop();
+      setState(() {
+        _isListening = false;
+      });
+      return;
+    }
+
+    // Start listening
+    print('GrievBot STT: Initializing speech recognition...');
+    bool available = await _speech.initialize(
+      onError: (error) {
+        print('GrievBot STT: Error - ${error.errorMsg}');
+        setState(() {
+          _isListening = false;
+        });
+        
+        // Provide user-friendly error messages
+        String errorMessage = error.errorMsg ?? 'Unknown error';
+        if (errorMessage.contains('timeout')) {
+          errorMessage = _selectedLanguage == 'hindi' 
+              ? 'कोई आवाज़ नहीं सुनाई दी। कृपया फिर से बोलें।'
+              : (_selectedLanguage == 'hinglish' 
+                  ? 'Koi awaaz nahi sunayi di. Please dobara bolo.'
+                  : 'No speech detected. Please try speaking again.');
+        }
+        _showError(errorMessage);
+      },
+      onStatus: (status) {
+        print('GrievBot STT: Status changed to $status');
+        if (status == 'done' || status == 'notListening') {
+          setState(() {
+            _isListening = false;
+          });
+        }
+      },
+    );
+
+    print('GrievBot STT: Available = $available');
+    if (!available) {
+      _showError(_getText()['sttNotAvailable'] ?? 'Speech recognition not available');
+      return;
+    }
+
+    // Determine locale based on selected language
+    String localeId = 'hi_IN';  // Hindi by default
+    if (_selectedLanguage == 'english') {
+      localeId = 'en_IN';
+    } else if (_selectedLanguage == 'hinglish') {
+      localeId = 'en_IN';  // Use English for Hinglish
+    }
+
+    print('GrievBot STT: Starting to listen with locale $localeId');
+    setState(() {
+      _isListening = true;
+    });
+
+    // Start listening and update text field with recognized speech
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          print('GrievBot STT: Recognized - ${result.recognizedWords}');
+          setState(() {
+            _voiceTextController.text = result.recognizedWords;
+          });
+        },
+        localeId: localeId,
+        listenMode: stt.ListenMode.confirmation,  // Stop after user finishes speaking
+        cancelOnError: true,
+        partialResults: true,  // Show results as user speaks
+        listenFor: const Duration(seconds: 30),  // Listen for up to 30 seconds
+        pauseFor: const Duration(seconds: 5),  // Pause detection after 5 seconds of silence
+      );
+    } catch (e) {
+      print('GrievBot STT: Listen error - $e');
+      setState(() {
+        _isListening = false;
+      });
+    }
   }
 
   /// Get current location
@@ -339,7 +429,10 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
           'subheading': 'अपनी शिकायत लिखें या फोटो लें',
           'describeLabel': 'अपनी शिकायत यहां लिखें:',
           'describeHint': 'क्या हुआ, बताएं...\n\nउदाहरण:\n• "मेरे घर के पास रोड टूट गई है, 2 दिन से"\n• "गली में कूडा नहीं उठाया जा रहा"\n• "स्ट्रीटलाइट खराब है"',
+          'voiceButton': '🎤 बोलकर बताएं',
+          'voiceButtonStop': '🛑 बंद करें',
           'photoButton': '📷 तस्वीर खींचे',
+          'sttNotAvailable': 'आपके फोन में बोलकर लिखना उपलब्ध नहीं है',
           'additionalLabel': 'कब से यह समस्या है?',
           'additionalHint': 'जैसे: "2 दिन से", "1 हफ्ते से", "आज से", "कई महीनों से"',
           'submitButton': '✅ शिकायत दर्ज करें',
@@ -365,7 +458,10 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
           'subheading': 'Describe your complaint or add a photo',
           'describeLabel': 'Describe your complaint:',
           'describeHint': 'Tell us what happened...\n\nExamples:\n• "Road is broken near my house, for 2 days"\n• "Garbage not collected in my street"\n• "Streetlight not working since yesterday"',
+          'voiceButton': '🎤 Speak to Tell',
+          'voiceButtonStop': '🛑 Stop',
           'photoButton': '📷 Take Photo',
+          'sttNotAvailable': 'Speech recognition not available on your phone',
           'additionalLabel': 'Since when is this issue bothering you?',
           'additionalHint': 'e.g., "2 days", "1 week", "today", "for months"',
           'submitButton': '✅ Submit Complaint',
@@ -391,7 +487,10 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
           'subheading': 'Apni shikayat likho ya photo lo',
           'describeLabel': 'Apni shikayat yahan likho:',
           'describeHint': 'Kya hua batao...\n\nExamples:\n• "Mere ghar ke paas road toot gayi hai, 2 din se"\n• "Gali mein kuda nahi uthaya ja raha"\n• "Streetlight kharab hai kal se"',
+          'voiceButton': '🎤 Bolkar Batao',
+          'voiceButtonStop': '🛑 Band Karo',
           'photoButton': '📷 Photo Lo',
+          'sttNotAvailable': 'Aapke phone mein bolkar likhna available nahi hai',
           'additionalLabel': 'Kab se yeh problem hai?',
           'additionalHint': 'Jaise: "2 din se", "1 week se", "aaj se", "kai mahino se"',
           'submitButton': '✅ Shikayat Submit Karo',
@@ -475,6 +574,16 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
                       ),
                       prefixIcon: const Icon(Icons.message),
                     ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Speech-to-Text Button (on-device speech recognition)
+                  _buildBigButton(
+                    icon: _isListening ? Icons.stop : Icons.mic,
+                    label: _isListening ? text['voiceButtonStop']! : text['voiceButton']!,
+                    color: _isListening ? Colors.red : Colors.blue,
+                    onPressed: _toggleSpeechToText,
                   ),
 
                   const SizedBox(height: 20),

@@ -55,5 +55,9 @@
 	<string>LokSetu needs location access to attach GPS coordinates to proof of work</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>LokSetu needs location access to verify work locations</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app uses speech recognition to file civic complaints</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app converts speech into text for complaints</string>
 </dict>
 </plist>
