@@ -114,55 +114,37 @@ Your answer (scheme ID only):''';
     final requiredDocs = scheme.requiredDocuments;
     final optionalDocs = scheme.optionalDocuments;
     
-    // Hindi instructions
-    String hindiMsg = 'आपके ${_getHindiSchemeName(scheme.name)} आवेदन के लिए, कृपया निम्नलिखित दस्तावेज़ अपलोड करें:\n\n';
-    hindiMsg += '✅ आवश्यक दस्तावेज़ (जरूरी):\n';
+    // Mixed bilingual instructions (Hindi with English in brackets)
+    String mixedMsg = '${_getHindiSchemeName(scheme.name)} (${scheme.name}) के लिए निम्नलिखित दस्तावेज़ अपलोड करें:\n\n';
+    mixedMsg += '✅ आवश्यक दस्तावेज़ (Required Documents):\n';
     for (int i = 0; i < requiredDocs.length; i++) {
-      hindiMsg += '${i + 1}. ${_getHindiName(requiredDocs[i])}\n';
+      mixedMsg += '${i + 1}. ${_getHindiName(requiredDocs[i])} (${requiredDocs[i]})\n';
     }
     
     if (optionalDocs.isNotEmpty) {
-      hindiMsg += '\n⚪ वैकल्पिक दस्तावेज़ (optional - अगर हो तो):\n';
+      mixedMsg += '\n⚪ वैकल्पिक दस्तावेज़ (Optional Documents):\n';
       for (int i = 0; i < optionalDocs.length; i++) {
-        hindiMsg += '${i + 1}. ${_getHindiName(optionalDocs[i])}\n';
+        mixedMsg += '${i + 1}. ${_getHindiName(optionalDocs[i])} (${optionalDocs[i]})\n';
       }
     }
     
-    hindiMsg += '\n📸 कृपया नीचे "Upload Documents" बटन पर क्लिक करें और दस्तावेज़ अपलोड करना शुरू करें।';
-    
-    // English instructions
-    String englishMsg = 'To complete your ${scheme.name} application, please upload the following documents:\n\n';
-    englishMsg += '✅ Required Documents (Mandatory):\n';
-    for (int i = 0; i < requiredDocs.length; i++) {
-      englishMsg += '${i + 1}. ${requiredDocs[i]}\n';
-    }
-    
-    if (optionalDocs.isNotEmpty) {
-      englishMsg += '\n⚪ Optional Documents (if available):\n';
-      for (int i = 0; i < optionalDocs.length; i++) {
-        englishMsg += '${i + 1}. ${optionalDocs[i]}\n';
-      }
-    }
-    
-    englishMsg += '\n📸 Please click the "Upload Documents" button below to start uploading.';
+    mixedMsg += '\n📸 नीचे क्लिक करें (Click below to upload)';
     
     return {
-      'hindi': hindiMsg,
-      'english': englishMsg,
+      'mixed': mixedMsg,
       'requiredDocs': requiredDocs,
       'optionalDocs': optionalDocs,
     };
   }
   
-  // Get voice prompt for each document (bilingual)
+  // Get voice prompt for each document (bilingual MIXED in one sentence)
   Map<String, String> getDocumentVoicePrompt(String documentName, {bool isRequired = true}) {
     final hindiName = _getHindiName(documentName);
-    final status = isRequired ? 'आवश्यक है' : 'वैकल्पिक है';
-    final statusEn = isRequired ? 'required' : 'optional';
+    final status = isRequired ? 'आवश्यक' : 'वैकल्पिक';
     
+    // Mixed format: Hindi (English) in same sentence
     return {
-      'hindi': '$hindiName अपलोड करें। यह $status।',
-      'english': 'Please upload $documentName. This is $statusEn.',
+      'mixed': '$hindiName ($documentName) अपलोड करें। यह $status है।',
     };
   }
   

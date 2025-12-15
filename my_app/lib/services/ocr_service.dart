@@ -47,12 +47,57 @@ class OCRService {
   Map<String, dynamic> _extractAadhaarData(String text) {
     final data = <String, dynamic>{};
 
-    // Extract Aadhaar number (12 digits, may have spaces)
-    final aadhaarRegex = RegExp(r'\b\d{4}\s?\d{4}\s?\d{4}\b');
-    final aadhaarMatch = aadhaarRegex.firstMatch(text);
-    if (aadhaarMatch != null) {
-      data['aadhaar_number'] = aadhaarMatch.group(0)!.replaceAll(' ', '');
+    // Clean text - remove extra spaces and normalize
+    final cleanText = text.replaceAll(RegExp(r'\s+'), ' ');
+    
+    print('=================== AADHAAR OCR ===================');
+    print('Original Text: $text');
+    print('Clean Text: $cleanText');
+    
+    // Extract Aadhaar number - try multiple aggressive patterns
+    final patterns = [
+      // Standard formats
+      RegExp(r'\b(\d{4})\s*(\d{4})\s*(\d{4})\b'), // 1234 5678 9012
+      RegExp(r'\b(\d{12})\b'), // 123456789012
+      
+      // With special characters
+      RegExp(r'\b(\d{4})[-\s]*(\d{4})[-\s]*(\d{4})\b'), // With dashes
+      RegExp(r'\b(\d{4})[.,\s]*(\d{4})[.,\s]*(\d{4})\b'), // With dots/commas
+      
+      // Anywhere in text - last resort
+      RegExp(r'(\d{4})[^\d]*(\d{4})[^\d]*(\d{4})'), // Any 4-4-4 pattern
+    ];
+    
+    for (final pattern in patterns) {
+      final matches = pattern.allMatches(cleanText);
+      for (final match in matches) {
+        String aadhaar;
+        if (match.groupCount >= 3) {
+          // Combine groups
+          aadhaar = match.group(1)! + match.group(2)! + match.group(3)!;
+        } else {
+          aadhaar = match.group(0)!.replaceAll(RegExp(r'[^\d]'), '');
+        }
+        
+        if (aadhaar.length == 12 && RegExp(r'^\d{12}$').hasMatch(aadhaar)) {
+          data['aadhaar_number'] = aadhaar;
+          print('✓ Found Aadhaar: $aadhaar');
+          break;
+        }
+      }
+      if (data.containsKey('aadhaar_number')) break;
     }
+    
+    if (!data.containsKey('aadhaar_number')) {
+      print('✗ Aadhaar NOT FOUND');
+      // Try to find any 12-digit number
+      final anyDigits = RegExp(r'\d+').allMatches(cleanText);
+      print('All digit sequences found:');
+      for (final match in anyDigits) {
+        print('  - ${match.group(0)}');
+      }
+    }
+    print('==================================================');
 
     // Extract name (usually appears after "Name" or on top)
     final nameRegex = RegExp(r'(?:Name|नाम)[:\s]+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)',

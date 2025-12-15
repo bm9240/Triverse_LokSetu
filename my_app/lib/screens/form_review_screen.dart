@@ -281,6 +281,67 @@ class _FormReviewScreenState extends State<FormReviewScreen> {
 
                 const SizedBox(height: 30),
 
+                // Uploaded Photos Section
+                if (widget.documents.any((doc) => doc.imagePath != null)) ...[
+                  const Text(
+                    'Uploaded Documents',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemCount: widget.documents.length,
+                    itemBuilder: (context, index) {
+                      final doc = widget.documents[index];
+                      if (doc.imagePath == null) return const SizedBox();
+                      
+                      return Card(
+                        clipBehavior: Clip.antiAlias,
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Image.file(
+                                File(doc.imagePath!),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              color: Colors.green.shade50,
+                              child: Text(
+                                doc.name,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 30),
+                ],
+
                 // Submit Button
                 ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitForm,

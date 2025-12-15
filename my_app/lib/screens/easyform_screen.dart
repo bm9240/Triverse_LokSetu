@@ -36,7 +36,7 @@ class _EasyFormScreenState extends State<EasyFormScreen> {
   Future<void> _initTts() async {
     try {
       await _flutterTts.setLanguage('hi-IN'); // Hindi by default
-      await _flutterTts.setSpeechRate(0.75); // Slower speed (0.75X)
+      await _flutterTts.setSpeechRate(0.5); // Very slow speed (0.5X)
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
       
@@ -53,7 +53,13 @@ class _EasyFormScreenState extends State<EasyFormScreen> {
     try {
       await _flutterTts.stop(); // Stop any ongoing speech
       await _flutterTts.setLanguage(isHindi ? 'hi-IN' : 'en-US');
+      
+      // Use awaitSpeakCompletion to wait until speech finishes
+      await _flutterTts.awaitSpeakCompletion(true);
       await _flutterTts.speak(text);
+      
+      // Add extra small delay to ensure completion
+      await Future.delayed(const Duration(milliseconds: 500));
     } catch (e) {
       print('TTS Error: $e');
       // Continue without TTS if it fails
@@ -62,12 +68,37 @@ class _EasyFormScreenState extends State<EasyFormScreen> {
 
   // Detect if input is primarily English
   bool _isEnglish(String text) {
-    // Check if text contains mostly English characters
+    final lower = text.toLowerCase();
+    
+    // Check for common Hindi words/phrases
+    final hindiWords = [
+      'mujhe', 'muje', 'mai', 'main', 'mere', 'mera', 'hai', 'hain',
+      'ka', 'ki', 'ke', 'ko', 'se', 'me', 'par', 'aur',
+      'chahiye', 'chahie', 'banwana', 'banana', 'lena', 'karna',
+      'kaise', 'kya', 'kaun', 'kab', 'kahan',
+    ];
+    
+    // If contains any Hindi words, it's Hindi input
+    for (final word in hindiWords) {
+      if (lower.contains(word)) {
+        return false; // It's Hindi
+      }
+    }
+    
+    // Check for common English sentence starters
+    final englishStarters = ['i want', 'i need', 'how to', 'apply for', 'get a'];
+    for (final starter in englishStarters) {
+      if (lower.startsWith(starter)) {
+        return true; // It's English
+      }
+    }
+    
+    // Default: check character ratio (but now secondary)
     final englishChars = text.split('').where((c) => 
       RegExp(r'[a-zA-Z]').hasMatch(c)
     ).length;
     final totalChars = text.replaceAll(' ', '').length;
-    return totalChars > 0 && (englishChars / totalChars) > 0.5;
+    return totalChars > 0 && (englishChars / totalChars) > 0.7;
   }
 
   Future<void> _startListening() async {
@@ -131,21 +162,9 @@ class _EasyFormScreenState extends State<EasyFormScreen> {
           _instructions = instructions;
         });
 
-        // Detect language and respond accordingly
-        bool inputIsEnglish = _isEnglish(_voiceInput);
-        
+        // Speak mixed bilingual (Hindi with English in same sentence)
         await Future.delayed(const Duration(milliseconds: 500));
-        if (inputIsEnglish) {
-          // User spoke English - respond ONLY in English
-          await _speak(instructions['english'], isHindi: false);
-          setState(() => _speakHindi = false); // Display English text
-        } else {
-          // User spoke Hindi - respond in BOTH Hindi and English
-          await _speak(instructions['hindi'], isHindi: true);
-          await Future.delayed(const Duration(milliseconds: 800));
-          await _speak(instructions['english'], isHindi: false);
-          setState(() => _speakHindi = true); // Display Hindi text by default
-        }
+        await _speak(instructions['mixed'], isHindi: true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -412,75 +431,35 @@ class _EasyFormScreenState extends State<EasyFormScreen> {
                               Icon(Icons.document_scanner,
                                   color: Colors.orange.shade700),
                               const SizedBox(width: 8),
-                              Text(
-                                _isEnglish(_voiceInput)
-                                    ? 'Required Documents'
-                                    : 'Required Documents / आवश्यक दस्तावेज़',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              const Expanded(
+                                child: Text(
+                                  'Required Documents',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                              const Spacer(),
                               IconButton(
                                 icon: const Icon(
                                   Icons.volume_up,
                                   color: Colors.indigo,
                                 ),
-                                tooltip: 'Listen to instructions',
+                                tooltip: 'Listen',
                                 onPressed: () async {
-                                  bool inputIsEnglish = _isEnglish(_voiceInput);
-                                  if (inputIsEnglish) {
-                                    // User spoke English - speak ONLY English
-                                    await _speak(_instructions!['english'], isHindi: false);
-                                  } else {
-                                    // User spoke Hindi - speak BOTH
-                                    await _speak(_instructions!['hindi'], isHindi: true);
-                                    await Future.delayed(const Duration(milliseconds: 600));
-                                    await _speak(_instructions!['english'], isHindi: false);
-                                  }
+                                  await _speak(_instructions!['mixed'], isHindi: true);
                                 },
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // Show English if user spoke English, both if Hindi
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!_speakHindi || _isEnglish(_voiceInput)) ...[
-                                // Show English (always if input was English)
-                                Text(
-                                  _instructions!['english'],
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    height: 1.8,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                              if (_speakHindi && !_isEnglish(_voiceInput)) ...[
-                                // Show Hindi only if input was Hindi
-                                Text(
-                                  _instructions!['hindi'],
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    height: 1.8,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                const Divider(),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _instructions!['english'],
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    height: 1.8,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ],
-                            ],
+                          // Show mixed bilingual instructions
+                          Text(
+                            _instructions!['mixed'],
+                            style: const TextStyle(
+                              fontSize: 15,
+                              height: 1.8,
+                            ),
                           ),
                         ],
                       ),

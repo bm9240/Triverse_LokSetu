@@ -44,7 +44,7 @@ class _DocumentCaptureScreenState extends State<DocumentCaptureScreen> {
   Future<void> _initTts() async {
     try {
       await _flutterTts.setLanguage('hi-IN');
-      await _flutterTts.setSpeechRate(0.75); // Slower speed (0.75X)
+      await _flutterTts.setSpeechRate(0.5); // Very slow speed (0.5X)
       await _flutterTts.setVolume(1.0);
       
       // Set error handler
@@ -60,6 +60,7 @@ class _DocumentCaptureScreenState extends State<DocumentCaptureScreen> {
     try {
       await _flutterTts.stop(); // Stop any ongoing speech
       await _flutterTts.setLanguage(isHindi ? 'hi-IN' : 'en-US');
+      await _flutterTts.awaitSpeakCompletion(true);
       await _flutterTts.speak(text);
     } catch (e) {
       print('TTS Error: $e');
@@ -70,26 +71,18 @@ class _DocumentCaptureScreenState extends State<DocumentCaptureScreen> {
   Future<void> _speakWelcomeMessage() async {
     await Future.delayed(const Duration(milliseconds: 500));
     await _speak(
-      'कृपया दस्तावेज़ अपलोड करना शुरू करें। हर दस्तावेज़ पर क्लिक करें।',
+      'कृपया दस्तावेज़ अपलोड करें (Please upload documents). हर दस्तावेज़ पर क्लिक करें (Click on each document).',
       isHindi: true,
-    );
-    await Future.delayed(const Duration(milliseconds: 600));
-    await _speak(
-      'Please start uploading documents. Click on each document.',
-      isHindi: false,
     );
   }
 
   Future<void> _captureDocument(String documentName, {bool isRequired = true}) async {
-    // Speak document name in BOTH Hindi and English
+    // Speak mixed bilingual (Hindi with English in parentheses)
     final voicePrompt = _aiService.getDocumentVoicePrompt(
       documentName,
       isRequired: isRequired,
     );
-    await _speak(voicePrompt['hindi']!, isHindi: true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    await _speak(voicePrompt['english']!, isHindi: false);
-    await Future.delayed(const Duration(milliseconds: 800));
+    await _speak(voicePrompt['mixed']!, isHindi: true);
     
     try {
       // Show source selection dialog
