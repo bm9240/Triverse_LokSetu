@@ -76,4 +76,11 @@ class ComplaintService {
   List<Complaint> getComplaintsByPhone(String phone) {
     return _complaints.where((c) => c.citizenPhone == phone).toList();
   }
+
+  Future<void> clearAllComplaints() async {
+    _complaints.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_complaintsKey);
+    print('🗑️ All complaints cleared from storage');
+  }
 }

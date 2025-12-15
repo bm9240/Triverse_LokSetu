@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/home_screen.dart';
 import 'screens/citizen_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/grievbot_screen.dart'; // GrievBot - AI complaint intake
 import 'screens/easyform_screen.dart'; // EasyForm - Auto-fill forms
 import 'providers/complaint_provider.dart';
+import 'services/officers_firestore_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +17,29 @@ Future<void> main() async {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     print('Error loading .env file: $e');
-    // Continue anyway - app will work without .env for basic features
   }
+
+  try {
+    print('🔵 Initializing Firebase...');
+    await Firebase.initializeApp();
+    print('✅ Firebase initialized successfully');
+    
+    // Test Firestore connection
+    try {
+      await FirebaseFirestore.instance.collection('_test').doc('_test').get();
+      print('✅ Firestore is reachable');
+    } catch (e) {
+      print('⚠️ Firestore connection test failed: $e');
+    }
+    
+    // Initialize officers database (run once on first launch)
+    final officersService = OfficersFirestoreService();
+    await officersService.initializeOfficers();
+  } catch (e) {
+    print('❌ Firebase init failed: $e');
+    print('⚠️ App will run with local storage only. Cloud sync disabled.');
+  }
+
   runApp(const LokSetuApp());
 }
 

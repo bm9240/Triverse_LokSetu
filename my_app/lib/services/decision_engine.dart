@@ -53,45 +53,82 @@ class DecisionEngine {
 
   /// Determine department based on complaint category
   String _determineDepartment(String category) {
-    final categoryLower = category.toLowerCase();
-    
-    if (categoryLower.contains('road') || 
-        categoryLower.contains('pothole') ||
-        categoryLower.contains('highway')) {
-      return 'Public Works Department';
-    } else if (categoryLower.contains('water') || 
-               categoryLower.contains('drainage') ||
-               categoryLower.contains('sewer')) {
-      return 'Water Supply & Sanitation';
-    } else if (categoryLower.contains('electric') || 
-               categoryLower.contains('power') ||
-               categoryLower.contains('light')) {
+    final c = category.toLowerCase();
+
+    // 1. Streetlight & Electricity
+    if (c.contains('streetlight') || c.contains('street light') || c.contains('electric') || c.contains('power') || c.contains('light')) {
       return 'Electricity Board';
-    } else if (categoryLower.contains('garbage') || 
-               categoryLower.contains('waste') ||
-               categoryLower.contains('sanitation')) {
+    }
+
+    // 2. Roads & Infrastructure
+    if (c.contains('road') || c.contains('pothole') || c.contains('pavement') || c.contains('footpath') || c.contains('infrastructure')) {
+      return 'Public Works Department';
+    }
+
+    // 3. Water Supply
+    if (c.contains('water') || c.contains('pipe') || c.contains('leak') || c.contains('quality')) {
+      return 'Water Supply & Sanitation';
+    }
+
+    // 4. Sanitation & Waste
+    if (c.contains('sanitation') || c.contains('garbage') || c.contains('waste') || c.contains('collection') || c.contains('disposal')) {
       return 'Waste Management';
-    } else if (categoryLower.contains('park') || 
-               categoryLower.contains('garden') ||
-               categoryLower.contains('tree')) {
-      return 'Parks & Recreation';
-    } else if (categoryLower.contains('traffic') || 
-               categoryLower.contains('signal') ||
-               categoryLower.contains('parking')) {
+    }
+
+    // 5. Drainage & Flooding
+    if (c.contains('drain') || c.contains('drainage') || c.contains('sewer') || c.contains('flood') || c.contains('waterlogging') || c.contains('water logging')) {
+      return 'Water Supply & Sanitation';
+    }
+
+    // 6. Traffic & Transport
+    if (c.contains('traffic') || c.contains('signal') || c.contains('parking') || c.contains('transport') || c.contains('bus') || c.contains('public transport')) {
       return 'Traffic Police';
-    } else if (categoryLower.contains('health') || 
-               categoryLower.contains('hospital') ||
-               categoryLower.contains('clinic')) {
+    }
+
+    // 7. Public Safety
+    if (c.contains('safety') || c.contains('security') || c.contains('harass') || c.contains('crime') || c.contains('assault') || c.contains('law & order')) {
+      return 'Public Safety & Services';
+    }
+
+    // 8. Parks & Public Spaces
+    if (c.contains('park') || c.contains('garden') || c.contains('playground') || c.contains('public space') || c.contains('tree')) {
+      return 'Parks & Recreation';
+    }
+
+    // 9. Public Health
+    if (c.contains('health') || c.contains('hospital') || c.contains('clinic') || c.contains('sanitary') || c.contains('disease')) {
       return 'Health Department';
-    } else if (categoryLower.contains('education') || 
-               categoryLower.contains('school')) {
-      return 'Education Department';
-    } else if (categoryLower.contains('tax') || 
-               categoryLower.contains('property')) {
-      return 'Revenue Department';
-    } else {
+    }
+
+    // 10. Environment
+    if (c.contains('pollution') || c.contains('air quality') || c.contains('noise') || c.contains('environment')) {
+      return 'Environment Department';
+    }
+
+    // 11. Housing & Urban Services
+    if (c.contains('housing') || c.contains('urban') || c.contains('property') || c.contains('building') || c.contains('encroachment')) {
+      return 'Urban Development';
+    }
+
+    // 12. Government Services
+    if (c.contains('government service') || c.contains('service delivery') || c.contains('certificate') || c.contains('document') || c.contains('application')) {
+      return 'Citizen Services Center';
+    }
+
+    // 13. Other Civic Issue
+    if (c.contains('other civic') || c.contains('other') || c.contains('misc')) {
       return 'General Administration';
     }
+
+    // Fallback: heuristic using previous general mapping
+    if (c.contains('education') || c.contains('school')) {
+      return 'Education Department';
+    }
+    if (c.contains('tax')) {
+      return 'Revenue Department';
+    }
+
+    return 'General Administration';
   }
 
   /// Calculate base priority from urgency and category

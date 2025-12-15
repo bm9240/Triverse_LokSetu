@@ -3,10 +3,14 @@ import '../models/complaint.dart';
 import '../models/autogov_complaint.dart';
 import '../services/complaint_service.dart';
 import '../services/autogov_engine.dart';
+import '../services/firestore_service.dart';
+import '../services/officers_firestore_service.dart';
 
 class ComplaintProvider with ChangeNotifier {
   final ComplaintService _service = ComplaintService();
   final AutoGovEngine _autoGovEngine = AutoGovEngine();
+  final FirestoreService _firestore = FirestoreService();
+  final OfficersFirestoreService _officersService = OfficersFirestoreService();
   List<Complaint> _complaints = [];
   bool _isLoading = false;
   bool _autoGovInitialized = false;
@@ -30,11 +34,37 @@ class ComplaintProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
+    // Load from local storage
     await _service.loadComplaints();
-    _complaints = _service.getAllComplaints();
+    final localComplaints = _service.getAllComplaints();
     
-    _isLoading = false;
-    notifyListeners();
+    // Load from Firestore and merge (Firestore takes priority)
+    try {
+      final firestoreStream = _firestore.getComplaintsStream();
+      firestoreStream.listen((firestoreComplaints) {
+        // Create a map of Firestore complaints by ID
+        final firestoreMap = {for (var c in firestoreComplaints) c.id: c};
+        
+        // Start with Firestore complaints (they have the latest data)
+        final mergedComplaints = [...firestoreComplaints];
+        
+        // Add local complaints that don't exist in Firestore
+        for (final localComplaint in localComplaints) {
+          if (!firestoreMap.containsKey(localComplaint.id)) {
+            mergedComplaints.add(localComplaint);
+          }
+        }
+        
+        _complaints = mergedComplaints;
+        _isLoading = false;
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('⚠️ Failed to load Firestore complaints: $e');
+      _complaints = localComplaints;
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addComplaint(Complaint complaint) async {
@@ -53,15 +83,12 @@ class ComplaintProvider with ChangeNotifier {
     try {
       debugPrint('🤖 AutoGov: Starting to process complaint ${complaint.id}');
       debugPrint('   Category: ${complaint.category}');
-      debugPrint('   Location: ${complaint.location}');
       debugPrint('   Severity: ${complaint.severity}');
       
       await _initializeAutoGov();
-      debugPrint('🤖 AutoGov: Engine initialized');
       
       final city = _extractCity(complaint.location);
       final ward = _extractWard(complaint.location);
-      debugPrint('🤖 AutoGov: Extracted - City: $city, Ward: $ward');
       
       // Convert to AutoGov format
       final autoGovComplaint = AutoGovComplaintExtension(
@@ -78,41 +105,60 @@ class ComplaintProvider with ChangeNotifier {
         timestamp: complaint.submittedAt,
       );
 
-      debugPrint('🤖 AutoGov: Calling engine.processComplaint()...');
       // Process through AutoGov Engine
       final result = await _autoGovEngine.processComplaint(autoGovComplaint);
       
-      debugPrint('🤖 AutoGov: Engine returned - Success: ${result.success}');
       if (!result.success) {
-        debugPrint('⚠️ AutoGov: Processing failed - ${result.errorMessage}');
+        debugPrint('⚠️ AutoGov: Failed - ${result.errorMessage}');
+        return;
       }
       
-      if (result.success) {
-        // Store AutoGov data in complaint
-        complaint.autoGovDepartment = result.department;
-        complaint.autoGovPriority = result.priority?.displayName;
-        complaint.autoGovOfficerName = result.assignedOfficer;
-        complaint.autoGovOfficerDesignation = _getOfficerDesignation(result.department);
-        complaint.autoGovWard = ward;
-        complaint.autoGovCity = city;
-        complaint.autoGovSlaDeadline = result.slaDeadline;
-        
-        debugPrint('🤖 AutoGov: Saving updated complaint to service...');
-        // Save updated complaint
-        await _service.updateComplaint(complaint);
-        
-        // Reload complaints to get updated data
-        _complaints = _service.getAllComplaints();
-        
-        debugPrint('✅ AutoGov: Complaint ${complaint.id} processed');
-        debugPrint('   Department: ${result.department}');
-        debugPrint('   Priority: ${result.priority?.displayName}');
-        debugPrint('   Officer: ${result.assignedOfficer}');
-        debugPrint('   Ward: $ward, City: $city');
+      // Get officer details from the assigned officer ID
+      String? officerName;
+      String? officerDesignation;
+      
+      if (autoGovComplaint.assignedOfficerId != null) {
+        // Fetch officer details from Firestore
+        try {
+          final officer = await _officersService.getOfficerById(autoGovComplaint.assignedOfficerId!);
+          if (officer != null) {
+            officerName = officer.name;
+            officerDesignation = officer.designation;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Could not fetch officer details: $e');
+        }
       }
+      
+      // Update complaint with AutoGov data
+      complaint.autoGovDepartment = result.department;
+      complaint.autoGovPriority = result.priority?.displayName;
+      complaint.assignedOfficerId = autoGovComplaint.assignedOfficerId;
+      complaint.autoGovOfficerName = officerName ?? 'Officer Assigned';
+      complaint.autoGovOfficerDesignation = officerDesignation ?? _getOfficerDesignation(result.department);
+      complaint.autoGovWard = ward;
+      complaint.autoGovCity = city;
+      complaint.autoGovSlaDeadline = result.slaDeadline;
+      
+      // Save updated complaint
+      await _service.updateComplaint(complaint);
+      
+      // Sync to Firestore
+      try {
+        await _firestore.upsertComplaint(complaint);
+      } catch (e) {
+        debugPrint('⚠️ Firestore sync failed: $e');
+      }
+      
+      debugPrint('✅ AutoGov: Processed successfully');
+      debugPrint('   Department: ${result.department}');
+      debugPrint('   Officer ID: ${autoGovComplaint.assignedOfficerId}');
+      debugPrint('   Officer: $officerName');
+      debugPrint('   Priority: ${result.priority?.displayName}');
+      
     } catch (e, stackTrace) {
-      debugPrint('⚠️ AutoGov processing error: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('⚠️ AutoGov error: $e');
+      debugPrint('Stack: $stackTrace');
     }
   }
   
@@ -169,6 +215,18 @@ class ComplaintProvider with ChangeNotifier {
     await _service.updateComplaint(complaint);
     _complaints = _service.getAllComplaints();
     notifyListeners();
+  }
+
+  Future<void> clearAllComplaints() async {
+    await _service.clearAllComplaints();
+    _complaints = [];
+    try {
+      await _firestore.deleteAllComplaints();
+    } catch (e) {
+      debugPrint('⚠️ Firestore clear failed: $e');
+    }
+    notifyListeners();
+    debugPrint('🗑️ All complaints cleared from provider');
   }
 
   Future<void> addProofToComplaint(String complaintId, ProofChainEntry proof) async {

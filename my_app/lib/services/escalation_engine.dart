@@ -1,6 +1,5 @@
 import '../models/autogov_complaint.dart';
 import 'audit_log_service.dart';
-import 'officer_assignment_service.dart';
 import 'package:uuid/uuid.dart';
 
 /// Autonomous Escalation Engine
@@ -11,7 +10,6 @@ class EscalationEngine {
   EscalationEngine._internal();
 
   final AuditLogService _auditLog = AuditLogService();
-  final OfficerAssignmentService _officerService = OfficerAssignmentService();
   final Uuid _uuid = const Uuid();
 
   /// Trigger escalation for a complaint
@@ -62,15 +60,8 @@ class EscalationEngine {
     complaint.slaDuration = newSLA;
     complaint.slaDeadline = DateTime.now().add(newSLA);
 
-    // Assign to higher authority
-    String? newOfficerId;
-    if (toLevel == EscalationLevel.departmentHead) {
-      newOfficerId = _officerService.getDepartmentHead(complaint.assignedDepartment!);
-    } else if (toLevel == EscalationLevel.districtAuthority) {
-      newOfficerId = _officerService.getDistrictAuthority(complaint.location.city);
-    }
-
-    complaint.assignedOfficerId = newOfficerId;
+    // Note: Officer escalation is now handled by AutoGovEngine reassignment
+    // Department head/district authority assignment is implicit in department routing
 
     // Create escalation record
     final escalationRecord = EscalationRecord(
@@ -80,7 +71,7 @@ class EscalationEngine {
       toLevel: toLevel,
       reason: reason,
       fromOfficerId: previousOfficerId,
-      toOfficerId: newOfficerId,
+      toOfficerId: null, // Will be reassigned by AutoGov on re-processing
       newPriority: newPriority,
     );
 
@@ -95,7 +86,7 @@ class EscalationEngine {
       newPriority: newPriority,
       metadata: {
         'previous_officer': previousOfficerId ?? 'none',
-        'new_officer': newOfficerId ?? 'none',
+        'new_officer': 'pending_reassignment',
         'new_sla': newSLA.toString(),
       },
     );
@@ -105,7 +96,7 @@ class EscalationEngine {
       complaintId: complaint.complaintId,
       fromLevel: fromLevel,
       toLevel: toLevel,
-      newOfficerId: newOfficerId,
+      newOfficerId: null, // Reassigned on re-processing
       newPriority: newPriority,
     );
   }

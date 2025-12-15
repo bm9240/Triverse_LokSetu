@@ -27,19 +27,23 @@ class ComplaintDetailScreen extends StatelessWidget {
             return const Center(child: Text('Complaint not found'));
           }
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(complaint),
-                _buildAutoGovInfo(provider, complaint),
-                _buildComplaintInfo(complaint),
-                if (complaint.imagePath != null) _buildComplaintPhoto(complaint, context),
-                if (complaint.proofChain.isNotEmpty) _buildProofChain(complaint, context),
-              ],
-            ),
-          );
+          return _buildComplaintContent(context, complaint);
         },
+      ),
+    );
+  }
+
+  Widget _buildComplaintContent(BuildContext context, Complaint complaint) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(complaint),
+          _buildAutoGovInfo(complaint),
+          _buildComplaintInfo(complaint),
+          if (complaint.imagePath != null) _buildComplaintPhoto(complaint, context),
+          if (complaint.proofChain.isNotEmpty) _buildProofChain(complaint, context),
+        ],
       ),
     );
   }
@@ -233,7 +237,7 @@ class ComplaintDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAutoGovInfo(ComplaintProvider provider, Complaint complaint) {
+  Widget _buildAutoGovInfo(Complaint complaint) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),

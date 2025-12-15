@@ -34,7 +34,7 @@ class AutoGovEngine {
 
     // Initialize components
     _jurisdictionResolver.initialize();
-    _officerService.initialize();
+    // OfficerAssignmentService is initialized lazily on first assignment
     
     // Start SLA monitoring
     _slaMonitor.startGlobalMonitoring();
@@ -86,7 +86,7 @@ class AutoGovEngine {
       }
 
       // Step 4: Assign officer
-      final assignment = _officerService.assignOfficer(
+      final assignment = await _officerService.assignOfficer(
         complaint,
         decision.department,
       );

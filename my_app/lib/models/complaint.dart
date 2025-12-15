@@ -18,8 +18,9 @@ class Complaint {
   // AutoGov Engine fields
   String? autoGovDepartment;
   String? autoGovPriority;
-  String? autoGovOfficerName;
-  String? autoGovOfficerDesignation;
+  String? assignedOfficerId; // Dynamic officer assignment - stores officer ID only
+  String? autoGovOfficerName; // DEPRECATED: For backward compatibility only
+  String? autoGovOfficerDesignation; // DEPRECATED: For backward compatibility only
   String? autoGovWard;
   String? autoGovCity;
   DateTime? autoGovSlaDeadline;
@@ -42,6 +43,7 @@ class Complaint {
     List<ProofChainEntry>? proofChain,
     this.autoGovDepartment,
     this.autoGovPriority,
+    this.assignedOfficerId,
     this.autoGovOfficerName,
     this.autoGovOfficerDesignation,
     this.autoGovWard,
@@ -71,6 +73,7 @@ class Complaint {
         'proofChain': proofChain.map((e) => e.toJson()).toList(),
         'autoGovDepartment': autoGovDepartment,
         'autoGovPriority': autoGovPriority,
+        'assignedOfficerId': assignedOfficerId,
         'autoGovOfficerName': autoGovOfficerName,
         'autoGovOfficerDesignation': autoGovOfficerDesignation,
         'autoGovWard': autoGovWard,
@@ -102,6 +105,7 @@ class Complaint {
             [],
         autoGovDepartment: json['autoGovDepartment'],
         autoGovPriority: json['autoGovPriority'],
+        assignedOfficerId: json['assignedOfficerId'],
         autoGovOfficerName: json['autoGovOfficerName'],
         autoGovOfficerDesignation: json['autoGovOfficerDesignation'],
         autoGovWard: json['autoGovWard'],

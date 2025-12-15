@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/complaint_provider.dart';
 import '../models/complaint.dart';
 import '../services/location_service.dart';
+import '../services/firestore_service.dart';
 import 'complaint_detail_screen.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -19,14 +20,19 @@ class _AdminScreenState extends State<AdminScreen> {
   String _selectedView = 'home'; // 'home' or 'department'
   String? _selectedDepartment;
 
+  // Keep department names in sync with DecisionEngine mappings
   final List<String> _departments = [
     'Public Works Department',
     'Water Supply & Sanitation',
     'Electricity Board',
     'Waste Management',
-    'Parks & Recreation',
     'Traffic Police',
+    'Public Safety & Services',
+    'Parks & Recreation',
     'Health Department',
+    'Environment Department',
+    'Urban Development',
+    'Citizen Services Center',
     'Education Department',
     'Revenue Department',
     'General Administration',
@@ -43,6 +49,14 @@ class _AdminScreenState extends State<AdminScreen> {
                 : '🏢 Departments'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
+        actions: [
+          if (_selectedView == 'home' && _selectedDepartment == null)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              tooltip: 'Clear All Complaints',
+              onPressed: () => _showClearConfirmation(context),
+            ),
+        ],
       ),
       drawer: _buildDrawer(),
       body: _selectedComplaintId.isEmpty
@@ -113,14 +127,26 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildDepartmentList() {
-    return Consumer<ComplaintProvider>(
-      builder: (context, provider, child) {
+    final firestoreService = FirestoreService();
+    
+    return StreamBuilder<List<Complaint>>(
+      stream: firestoreService.getComplaintsStream(),
+      builder: (context, snapshot) {
+        List<Complaint> complaints = [];
+        
+        // Use Firestore data if available, otherwise fall back to Provider
+        if (snapshot.hasData) {
+          complaints = snapshot.data ?? [];
+        } else {
+          complaints = context.read<ComplaintProvider>().complaints;
+        }
+        
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: _departments.length,
           itemBuilder: (context, index) {
             final dept = _departments[index];
-            final deptComplaints = provider.complaints
+            final deptComplaints = complaints
                 .where((c) => c.autoGovDepartment == dept && c.status != ComplaintStatus.completed)
                 .length;
             
@@ -136,7 +162,17 @@ class _AdminScreenState extends State<AdminScreen> {
                   dept,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text('$deptComplaints pending complaints'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$deptComplaints pending complaints'),
+                    if (snapshot.hasData)
+                      const Text(
+                        '🔴 Live data',
+                        style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.w500),
+                      ),
+                  ],
+                ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   setState(() {
@@ -156,7 +192,11 @@ class _AdminScreenState extends State<AdminScreen> {
     if (dept.contains('Water')) return Icons.water_drop;
     if (dept.contains('Electricity')) return Icons.electric_bolt;
     if (dept.contains('Waste')) return Icons.delete;
+    if (dept.contains('Safety')) return Icons.shield_moon;
     if (dept.contains('Parks')) return Icons.park;
+    if (dept.contains('Environment')) return Icons.eco;
+    if (dept.contains('Urban')) return Icons.location_city;
+    if (dept.contains('Citizen Services')) return Icons.miscellaneous_services;
     if (dept.contains('Traffic')) return Icons.traffic;
     if (dept.contains('Health')) return Icons.local_hospital;
     if (dept.contains('Education')) return Icons.school;
@@ -165,13 +205,39 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildDepartmentView() {
-    return Consumer<ComplaintProvider>(
-      builder: (context, provider, child) {
-        final deptComplaints = provider.complaints
+    final firestoreService = FirestoreService();
+    
+    return StreamBuilder<List<Complaint>>(
+      stream: firestoreService.getComplaintsStream(),
+      builder: (context, snapshot) {
+        List<Complaint> complaints = [];
+        
+        // Use Firestore data if available, otherwise fall back to local Provider data
+        if (snapshot.hasData) {
+          complaints = snapshot.data ?? [];
+        } else {
+          // Fallback to Provider data while Firestore loads
+          complaints = context.read<ComplaintProvider>().complaints;
+        }
+        
+        final deptComplaints = complaints
             .where((c) => c.autoGovDepartment == _selectedDepartment && c.status != ComplaintStatus.completed)
             .toList();
 
-        final performers = _calculatePerformers(provider.complaints, _selectedDepartment!);
+        final performers = _calculatePerformers(complaints, _selectedDepartment!);
+
+        if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text('Loading real-time data from $_selectedDepartment...'),
+              ],
+            ),
+          );
+        }
 
         return SingleChildScrollView(
           child: Column(
@@ -189,12 +255,26 @@ class _AdminScreenState extends State<AdminScreen> {
                       },
                     ),
                     Expanded(
-                      child: Text(
-                        _selectedDepartment!,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedDepartment!,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (snapshot.hasData)
+                            Text(
+                              '🔴 Live • ${deptComplaints.length} pending',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],
@@ -217,7 +297,18 @@ class _AdminScreenState extends State<AdminScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...deptComplaints.map((complaint) => _buildComplaintCard(complaint)),
+                    if (deptComplaints.isEmpty)
+                      Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.check_circle_outline, size: 80, color: Colors.grey),
+                            const SizedBox(height: 10),
+                            Text('No pending complaints in $_selectedDepartment'),
+                          ],
+                        ),
+                      )
+                    else
+                      ...deptComplaints.map((complaint) => _buildComplaintCard(complaint)),
                   ],
                 ),
               ),
@@ -647,6 +738,57 @@ class _AdminScreenState extends State<AdminScreen> {
         return Colors.green;
       case ComplaintStatus.rejected:
         return Colors.red;
+    }
+  }
+
+  void _showClearConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('⚠️ Clear All Complaints?'),
+          content: const Text(
+            'This will delete all complaints and start fresh. This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _clearAllComplaints(context);
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Clear All',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _clearAllComplaints(BuildContext context) async {
+    try {
+      final provider = Provider.of<ComplaintProvider>(context, listen: false);
+      await provider.clearAllComplaints();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ All complaints cleared! Ready for fresh start.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error clearing complaints: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

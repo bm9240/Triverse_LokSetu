@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "583777232672",
+    "project_id": "loksetu-71744",
+    "storage_bucket": "loksetu-71744.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583777232672:android:c8e8bb07f0bf27c531d945",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNGzoka1Qfct-wpDPgcpT3LsU0aJkM9dg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
