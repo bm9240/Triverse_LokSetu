@@ -136,13 +136,19 @@ class DecisionEngine {
     UrgencyLevel urgency,
     String category,
   ) {
+    // Smart filtering: Cap non-critical categories
+    final maxAllowedUrgency = _getMaxAllowedUrgency(category);
+    final adjustedUrgency = urgency.index > maxAllowedUrgency.index 
+        ? maxAllowedUrgency 
+        : urgency;
+    
     // Critical urgency always gets P1 or P2
-    if (urgency == UrgencyLevel.critical) {
+    if (adjustedUrgency == UrgencyLevel.critical) {
       return PriorityLevel.p1;
     }
     
     // High urgency with critical categories
-    if (urgency == UrgencyLevel.high) {
+    if (adjustedUrgency == UrgencyLevel.high) {
       if (_isCriticalCategory(category)) {
         return PriorityLevel.p1;
       }
@@ -150,7 +156,7 @@ class DecisionEngine {
     }
     
     // Medium urgency
-    if (urgency == UrgencyLevel.medium) {
+    if (adjustedUrgency == UrgencyLevel.medium) {
       if (_isCriticalCategory(category)) {
         return PriorityLevel.p2;
       }
@@ -159,6 +165,72 @@ class DecisionEngine {
     
     // Low urgency
     return PriorityLevel.p4;
+  }
+
+  /// Determine maximum allowed urgency for a category (smart filtering)
+  UrgencyLevel _getMaxAllowedUrgency(String category) {
+    final c = category.toLowerCase();
+    
+    // Life-threatening/safety categories: Allow Critical
+    if (c.contains('safety') || c.contains('emergency') || c.contains('fire') || 
+        c.contains('accident') || c.contains('harass') || c.contains('assault') || 
+        c.contains('crime') || c.contains('attack') || c.contains('threat') ||
+        c.contains('law & order')) {
+      return UrgencyLevel.critical;
+    }
+    
+    // Infrastructure failures: Allow Critical
+    if (c.contains('water') && (c.contains('supply') || c.contains('contamination') || c.contains('quality'))) {
+      return UrgencyLevel.high;
+    }
+    if (c.contains('electric') || c.contains('power') || c.contains('streetlight')) {
+      return UrgencyLevel.high;
+    }
+    if (c.contains('health') || c.contains('disease') || c.contains('sanitary')) {
+      return UrgencyLevel.critical;
+    }
+    if (c.contains('drainage') && c.contains('flood')) {
+      return UrgencyLevel.critical;
+    }
+    
+    // Road hazards: Max High
+    if (c.contains('road') || c.contains('pothole') || c.contains('pavement')) {
+      return UrgencyLevel.high;
+    }
+    
+    // Traffic issues: Max High
+    if (c.contains('traffic') || c.contains('signal') || c.contains('parking')) {
+      return UrgencyLevel.high;
+    }
+    
+    // Waste/Sanitation: Max High
+    if (c.contains('garbage') || c.contains('waste') || c.contains('collection')) {
+      return UrgencyLevel.high;
+    }
+    
+    // Parks, recreation, environment: Max Medium
+    if (c.contains('park') || c.contains('garden') || c.contains('playground') || 
+        c.contains('tree') || c.contains('public space')) {
+      return UrgencyLevel.medium;
+    }
+    if (c.contains('pollution') || c.contains('noise') || c.contains('air quality')) {
+      return UrgencyLevel.medium;
+    }
+    
+    // Administrative/Documentation: Max Medium
+    if (c.contains('certificate') || c.contains('document') || c.contains('application') ||
+        c.contains('government service') || c.contains('service delivery')) {
+      return UrgencyLevel.low;
+    }
+    
+    // Education, housing, urban dev: Max Medium
+    if (c.contains('education') || c.contains('school') || c.contains('housing') || 
+        c.contains('property') || c.contains('building') || c.contains('encroachment')) {
+      return UrgencyLevel.medium;
+    }
+    
+    // Default: Allow High
+    return UrgencyLevel.high;
   }
 
   /// Check if category is critical (safety/health related)

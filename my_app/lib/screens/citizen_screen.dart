@@ -116,6 +116,14 @@ class _CitizenScreenState extends State<CitizenScreen> {
     return Consumer<ComplaintProvider>(
       builder: (context, provider, child) {
         final complaints = provider.getComplaintsByPhone(_phoneNumber);
+        
+        // Separate pending and completed complaints
+        final pendingComplaints = complaints
+            .where((c) => c.status != ComplaintStatus.completed)
+            .toList();
+        final completedComplaints = complaints
+            .where((c) => c.status == ComplaintStatus.completed)
+            .toList();
 
         if (complaints.isEmpty) {
           return Center(
@@ -218,10 +226,22 @@ class _CitizenScreenState extends State<CitizenScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: complaints.length,
+                itemCount: pendingComplaints.length + 
+                    (completedComplaints.isNotEmpty ? 1 + completedComplaints.length : 0),
                 itemBuilder: (context, index) {
-                  final complaint = complaints[index];
-                  return _buildComplaintCard(complaint);
+                  // Show completed section header
+                  if (index == pendingComplaints.length && completedComplaints.isNotEmpty) {
+                    return _buildCompletedSectionHeader();
+                  }
+                  
+                  // Show completed complaints after pending ones
+                  if (index > pendingComplaints.length) {
+                    final completedIndex = index - pendingComplaints.length - 1;
+                    return _buildComplaintCard(completedComplaints[completedIndex]);
+                  }
+                  
+                  // Show pending complaints
+                  return _buildComplaintCard(pendingComplaints[index]);
                 },
               ),
             ),
@@ -253,6 +273,46 @@ class _CitizenScreenState extends State<CitizenScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Escalation Banner
+              if (complaint.escalatedToHead)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '⚡ ESCALATED TO DEPARTMENT HEAD',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              complaint.escalationReason ?? 'Your matter has been escalated for priority action',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Row(
                 children: [
                   Container(
@@ -287,28 +347,39 @@ class _CitizenScreenState extends State<CitizenScreen> {
                   if (complaint.proofChain.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: complaint.status == ComplaintStatus.completed
+                            ? Colors.green.shade600
+                            : Colors.green.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green, width: 1),
+                        border: Border.all(
+                          color: Colors.green,
+                          width: complaint.status == ComplaintStatus.completed ? 2 : 1,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.verified,
-                            size: 14,
-                            color: Colors.green,
+                          Icon(
+                            Icons.verified_user,
+                            size: complaint.status == ComplaintStatus.completed ? 18 : 14,
+                            color: complaint.status == ComplaintStatus.completed
+                                ? Colors.white
+                                : Colors.green,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Text(
                             '${complaint.proofChain.length} Proof${complaint.proofChain.length > 1 ? "s" : ""}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(
+                              fontSize: complaint.status == ComplaintStatus.completed ? 12 : 11,
+                              color: complaint.status == ComplaintStatus.completed
+                                  ? Colors.white
+                                  : Colors.green,
+                              fontWeight: complaint.status == ComplaintStatus.completed
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ],
@@ -362,6 +433,49 @@ class _CitizenScreenState extends State<CitizenScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedSectionHeader() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade100, Colors.teal.shade100],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green, width: 2),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '✨ RESOLVED COMPLAINTS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'These matters have been completed with proof from the officer',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

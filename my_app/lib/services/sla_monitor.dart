@@ -170,9 +170,12 @@ class SLAMonitor {
       if (complaint != null) {
         complaint.escalatedToHead = true;
         complaint.escalationReason = reason;
+        // Set new 2-day SLA deadline for escalated complaint
+        complaint.autoGovSlaDeadline = DateTime.now().add(const Duration(days: 2));
         await ComplaintService().saveComplaints();
         await FirestoreService().upsertComplaint(complaint);
         print('✅ Complaint $complaintId marked as escalated to head');
+        print('⏰ New SLA deadline: ${complaint.autoGovSlaDeadline} (2 days)');
         print('📢 Citizen notification: Matter escalated to department head due to SLA breach');
       }
     } catch (e) {
@@ -208,20 +211,41 @@ class SLAMonitor {
 
       // Check if deadline passed
       if (now.isAfter(tracking.deadline)) {
-        // Find complaint and trigger breach
-        final complaintId = tracking.complaintId;
+        // Mark as breached
+        tracking.breached = true;
+        tracking.breachTime = now;
+
+        // Log breach
         _auditLog.logSLAEvent(
-          complaintId: complaintId,
+          complaintId: tracking.complaintId,
           eventType: 'SLA_BREACHED',
           deadline: tracking.deadline,
           metadata: {
             'detected_at': now.toString(),
             'overdue_by': now.difference(tracking.deadline).toString(),
+            'priority': tracking.priorityLevel.toString(),
+            'officer_id': tracking.officerId ?? 'none',
           },
         );
 
-        tracking.breached = true;
-        tracking.breachTime = now;
+        // Penalize officer with -1 point for SLA breach
+        if (tracking.officerId != null) {
+          _penalizeOfficer(tracking.officerId!);
+        }
+
+        // Mark complaint as escalated, set new 2-day deadline, and notify citizen
+        _markComplaintEscalated(tracking.complaintId, 'SLA deadline exceeded - escalated to department head');
+
+        // Set new SLA deadline of 2 days for escalated complaint
+        tracking.deadline = now.add(const Duration(days: 2));
+        tracking.breached = false; // Reset breach flag for new deadline
+        tracking.warningIssued = false; // Reset warning flag
+        
+        print('⚡ New SLA deadline set: ${tracking.deadline} (2 days from escalation)');
+
+        // Note: EscalationEngine.triggerEscalation would require AutoGovComplaintExtension
+        // which is not stored in tracking. The escalation is implicit through marking
+        // the complaint as escalatedToHead for UI purposes.
       }
       // Warn if approaching deadline (e.g., 80% time elapsed)
       else {
@@ -315,7 +339,7 @@ class SLAMonitor {
 class SLATracking {
   final String complaintId;
   final DateTime startTime;
-  final DateTime deadline;
+  DateTime deadline; // Mutable to allow escalation deadline reset
   final PriorityLevel priorityLevel;
   final String department;
   final String? officerId;

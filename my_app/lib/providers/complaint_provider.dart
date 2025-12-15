@@ -5,12 +5,14 @@ import '../services/complaint_service.dart';
 import '../services/autogov_engine.dart';
 import '../services/firestore_service.dart';
 import '../services/officers_firestore_service.dart';
+import '../services/sla_escalation_handler.dart';
 
 class ComplaintProvider with ChangeNotifier {
   final ComplaintService _service = ComplaintService();
   final AutoGovEngine _autoGovEngine = AutoGovEngine();
   final FirestoreService _firestore = FirestoreService();
   final OfficersFirestoreService _officersService = OfficersFirestoreService();
+  final SLAEscalationHandler _escalationHandler = SLAEscalationHandler();
   List<Complaint> _complaints = [];
   bool _isLoading = false;
   bool _autoGovInitialized = false;
@@ -21,12 +23,35 @@ class ComplaintProvider with ChangeNotifier {
   ComplaintProvider() {
     loadComplaints();
     _initializeAutoGov();
+    _startEscalationMonitoring();
   }
 
   Future<void> _initializeAutoGov() async {
     if (!_autoGovInitialized) {
       await _autoGovEngine.initialize();
       _autoGovInitialized = true;
+    }
+  }
+
+  /// Start monitoring for overdue complaints that need escalation
+  void _startEscalationMonitoring() {
+    // Check for overdue complaints every 60 seconds
+    Future.delayed(const Duration(seconds: 60), () {
+      _checkAndEscalateOverdueComplaints();
+      // Reschedule
+      _startEscalationMonitoring();
+    });
+  }
+
+  /// Check and escalate overdue complaints
+  Future<void> _checkAndEscalateOverdueComplaints() async {
+    try {
+      await _escalationHandler.checkAndEscalateOverdueComplaints();
+      // Reload complaints to reflect escalations
+      _complaints = _service.getAllComplaints();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ Escalation check failed: $e');
     }
   }
 
@@ -245,5 +270,10 @@ class ComplaintProvider with ChangeNotifier {
 
   Complaint? getComplaintById(String id) {
     return _service.getComplaintById(id);
+  }
+
+  /// Get escalation status for a complaint
+  Map<String, dynamic> getEscalationStatus(String complaintId) {
+    return _escalationHandler.getEscalationStatus(complaintId);
   }
 }

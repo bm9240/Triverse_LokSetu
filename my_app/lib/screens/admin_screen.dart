@@ -346,12 +346,16 @@ class _AdminScreenState extends State<AdminScreen> {
             ...performers.asMap().entries.map((entry) {
               final index = entry.key;
               final performer = entry.value;
+              final escalatedCount = performer['escalatedCount'] as int? ?? 0;
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
+                  border: escalatedCount > 0 
+                      ? Border.all(color: Colors.red, width: 2)
+                      : null,
                 ),
                 child: Row(
                   children: [
@@ -391,6 +395,24 @@ class _AdminScreenState extends State<AdminScreen> {
                         ),
                       ],
                     ),
+                    if (escalatedCount > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '-$escalatedCount SLA',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
@@ -418,6 +440,9 @@ class _AdminScreenState extends State<AdminScreen> {
       final resolved = complaints.where((c) => c.status == ComplaintStatus.completed).length;
       final total = complaints.length;
       
+      // Count SLA breaches/escalations for this officer
+      final escalatedCount = complaints.where((c) => c.escalatedToHead).length;
+      
       final resolvedComplaints = complaints.where((c) => c.status == ComplaintStatus.completed).toList();
       double avgHours = 0;
       if (resolvedComplaints.isNotEmpty) {
@@ -441,10 +466,17 @@ class _AdminScreenState extends State<AdminScreen> {
         'avgTime': avgHours > 0 ? '${avgHours.toStringAsFixed(1)}h' : 'N/A',
         'avgHoursValue': avgHours,
         'resolutionRate': total > 0 ? resolved / total : 0,
+        'escalatedCount': escalatedCount, // SLA breaches
+        'penaltyMarked': escalatedCount > 0, // Marked for improvement if escalated
       });
     });
 
     performers.sort((a, b) {
+      // Sort by escalations (those with more go to "Needs Improvement")
+      final escalationDiff = b['escalatedCount'].compareTo(a['escalatedCount']);
+      if (escalationDiff != 0) return escalationDiff;
+      
+      // Then by resolution rate
       final rateDiff = b['resolutionRate'].compareTo(a['resolutionRate']);
       if (rateDiff != 0) return rateDiff;
       if (a['avgHoursValue'] == 0) return 1;
@@ -452,10 +484,8 @@ class _AdminScreenState extends State<AdminScreen> {
       return a['avgHoursValue'].compareTo(b['avgHoursValue']);
     });
 
-    final top = performers.take(3).toList();
-    final worst = performers.length > 3 
-        ? performers.reversed.take(3).toList().cast<Map<String, dynamic>>() 
-        : <Map<String, dynamic>>[];
+    final top = performers.where((p) => p['escalatedCount'] == 0).take(3).toList();
+    final worst = performers.where((p) => p['escalatedCount'] > 0).take(3).toList();
 
     return {
       'top': top,
@@ -467,7 +497,10 @@ class _AdminScreenState extends State<AdminScreen> {
     return Consumer<ComplaintProvider>(
       builder: (context, provider, child) {
         final pendingComplaints = provider.complaints
-            .where((c) => c.status != ComplaintStatus.completed)
+            .where((c) => c.status != ComplaintStatus.completed && !c.escalatedToHead)
+            .toList();
+        final escalatedComplaints = provider.complaints
+            .where((c) => c.escalatedToHead && c.status != ComplaintStatus.completed)
             .toList();
 
         if (pendingComplaints.isEmpty) {
@@ -545,13 +578,84 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
+              child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: pendingComplaints.length,
-                itemBuilder: (context, index) {
-                  final complaint = pendingComplaints[index];
-                  return _buildComplaintCard(complaint);
-                },
+                children: [
+                  if (escalatedComplaints.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.orange.shade600, Colors.orange.shade400],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.report, color: Colors.white, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Escalated Complaints',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'These require department head attention. Prioritize resolution.',
+                                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white30),
+                            ),
+                            child: Text(
+                              '${escalatedComplaints.length} total',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (escalatedComplaints.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade200, width: 2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ...escalatedComplaints.map((c) => _buildComplaintCard(c)),
+                        ],
+                      ),
+                    ),
+                  ...pendingComplaints.map((complaint) => _buildComplaintCard(complaint)),
+                ],
               ),
             ),
           ],
