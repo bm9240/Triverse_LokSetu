@@ -38,6 +38,9 @@ class ComplaintService {
     if (index != -1) {
       _complaints[index] = complaint;
       await saveComplaints();
+      print('📝 Complaint updated in service: ${complaint.id}');
+      print('   Officer: ${complaint.autoGovOfficerName}');
+      print('   Department: ${complaint.autoGovDepartment}');
     }
   }
 
@@ -55,7 +58,12 @@ class ComplaintService {
 
   Complaint? getComplaintById(String id) {
     try {
-      return _complaints.firstWhere((c) => c.id == id);
+      final complaint = _complaints.firstWhere((c) => c.id == id);
+      print('🔍 Retrieved complaint: ${complaint.id}');
+      print('   Officer: ${complaint.autoGovOfficerName}');
+      print('   Department: ${complaint.autoGovDepartment}');
+      print('   Ward: ${complaint.autoGovWard}');
+      return complaint;
     } catch (e) {
       return null;
     }
