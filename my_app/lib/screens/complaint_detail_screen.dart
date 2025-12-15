@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:intl/intl.dart';
 import '../models/complaint.dart';
+import '../models/trust_score.dart';
+import '../models/citizen_feedback.dart';
 import '../providers/complaint_provider.dart';
 
 class ComplaintDetailScreen extends StatelessWidget {
@@ -40,10 +42,396 @@ class ComplaintDetailScreen extends StatelessWidget {
         children: [
           _buildHeader(complaint),
           _buildAutoGovInfo(complaint),
+          _buildTrustStatusBanner(context, complaint),
+          _buildClarificationSection(context, complaint),
           _buildComplaintInfo(complaint),
           if (complaint.imagePath != null) _buildComplaintPhoto(complaint, context),
           if (complaint.proofChain.isNotEmpty) _buildProofChain(complaint, context),
+          _buildEmojiFeedbackSection(context, complaint),
         ],
+      ),
+    );
+  }
+
+  /// Trust status banner - shown only when official assigned
+  Widget _buildTrustStatusBanner(BuildContext context, Complaint complaint) {
+    // Only show if official is assigned AND trust status exists
+    if (complaint.assignedOfficerId == null || complaint.trustStatus == null) {
+      return const SizedBox.shrink();
+    }
+
+    Color bannerColor;
+    IconData bannerIcon;
+    
+    switch (complaint.trustStatus!) {
+      case TrustStatus.high:
+        bannerColor = Colors.green;
+        bannerIcon = Icons.verified;
+        break;
+      case TrustStatus.medium:
+        bannerColor = Colors.orange;
+        bannerIcon = Icons.info;
+        break;
+      case TrustStatus.low:
+        bannerColor = Colors.blue;
+        bannerIcon = Icons.search;
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bannerColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: bannerColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(bannerIcon, color: bannerColor, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              complaint.trustStatus!.displayName,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: bannerColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Clarification section - shown when admin requests clarification
+  Widget _buildClarificationSection(BuildContext context, Complaint complaint) {
+    if (complaint.clarificationRequest == null) {
+      return const SizedBox.shrink();
+    }
+
+    final request = complaint.clarificationRequest!;
+    final isAnswered = request.isAnswered;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.help_outline, color: Colors.orange, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isAnswered 
+                      ? 'Thank you for providing clarification!' 
+                      : 'Additional Clarification Needed',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (!isAnswered) ...[
+            const Text(
+              'Please answer the following questions to help us better understand your complaint:',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            const SizedBox(height: 12),
+          ],
+          ...request.questions.asMap().entries.map((entry) {
+            final index = entry.key;
+            final question = entry.value;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${index + 1}. ${question.question}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (question.answer != null) ...[
+                    // Show answer
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: question.answer! ? Colors.green.shade50 : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: question.answer! ? Colors.green : Colors.red,
+                        ),
+                      ),
+                      child: Text(
+                        question.answer! ? 'Yes ✓' : 'No ✗',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: question.answer! ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Show Yes/No buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _answerClarification(context, complaint, index, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Yes'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _answerClarification(context, complaint, index, false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('No'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  void _answerClarification(BuildContext context, Complaint complaint, int questionIndex, bool answer) {
+    complaint.clarificationRequest!.questions[questionIndex].answer = answer;
+    
+    // Check if all questions are answered
+    if (complaint.clarificationRequest!.isAnswered) {
+      complaint.clarificationRequest!.respondedAt = DateTime.now();
+    }
+
+    final provider = Provider.of<ComplaintProvider>(context, listen: false);
+    provider.updateComplaint(complaint);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(complaint.clarificationRequest!.isAnswered
+            ? '✅ All questions answered! Thank you.'
+            : '✅ Answer recorded'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// Emoji feedback section - shown after resolution
+  Widget _buildEmojiFeedbackSection(BuildContext context, Complaint complaint) {
+    // Only show for completed complaints from citizen view
+    if (complaint.status != ComplaintStatus.completed) {
+      return const SizedBox.shrink();
+    }
+
+    // If feedback already given, show it
+    if (complaint.citizenFeedback != null) {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green, width: 1),
+        ),
+        child: Row(
+          children: [
+            Text(
+              complaint.citizenFeedback!.emoji,
+              style: const TextStyle(fontSize: 32),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your Feedback',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    complaint.citizenFeedback!.label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // If no feedback yet, show feedback prompt
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.feedback, color: Colors.blue, size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'How satisfied are you with the resolution?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildFeedbackButton(
+                context,
+                complaint,
+                CitizenFeedback.positive,
+              ),
+              _buildFeedbackButton(
+                context,
+                complaint,
+                CitizenFeedback.neutral,
+              ),
+              _buildFeedbackButton(
+                context,
+                complaint,
+                CitizenFeedback.negative,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackButton(
+    BuildContext context,
+    Complaint complaint,
+    CitizenFeedback feedback,
+  ) {
+    return InkWell(
+      onTap: () {
+        _submitFeedback(context, complaint, feedback);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade300, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              feedback.emoji,
+              style: const TextStyle(fontSize: 40),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              feedback.label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submitFeedback(
+    BuildContext context,
+    Complaint complaint,
+    CitizenFeedback feedback,
+  ) {
+    final provider = Provider.of<ComplaintProvider>(context, listen: false);
+    
+    // Update complaint with feedback
+    complaint.citizenFeedback = feedback;
+    provider.updateComplaint(complaint);
+
+    // Update official reputation
+    if (complaint.assignedOfficerId != null) {
+      // Import and use ReputationService here
+      // ReputationService.updateAfterResolution(...);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text(feedback.emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Thank you for your feedback!'),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

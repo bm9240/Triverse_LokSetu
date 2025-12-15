@@ -4,8 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/complaint_provider.dart';
 import '../models/complaint.dart';
+import '../models/trust_score.dart';
+import '../models/citizen_feedback.dart';
+import '../models/official_reputation.dart';
 import '../services/location_service.dart';
 import '../services/firestore_service.dart';
+import '../services/reputation_service.dart';
 import 'complaint_detail_screen.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -62,9 +66,11 @@ class _AdminScreenState extends State<AdminScreen> {
       body: _selectedComplaintId.isEmpty
           ? (_selectedView == 'home' 
               ? _buildComplaintsList()
-              : (_selectedDepartment != null
-                  ? _buildDepartmentView()
-                  : _buildDepartmentList()))
+              : _selectedView == 'reputation'
+                  ? _buildReputationView()
+                  : (_selectedDepartment != null
+                      ? _buildDepartmentView()
+                      : _buildDepartmentList()))
           : _buildProofUploadScreen(),
     );
   }
@@ -116,6 +122,18 @@ class _AdminScreenState extends State<AdminScreen> {
             onTap: () {
               setState(() {
                 _selectedView = 'department';
+                _selectedDepartment = null;
+              });
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.stars, color: Colors.orange),
+            title: const Text('Official Reputation'),
+            selected: _selectedView == 'reputation',
+            onTap: () {
+              setState(() {
+                _selectedView = 'reputation';
                 _selectedDepartment = null;
               });
               Navigator.pop(context);
@@ -664,6 +682,339 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Widget _buildReputationView() {
+    return Consumer<ComplaintProvider>(
+      builder: (context, provider, child) {
+        // Get all resolved complaints with assigned officers
+        final resolvedComplaints = provider.complaints
+            .where((c) => 
+                c.status == ComplaintStatus.completed && 
+                c.assignedOfficerId != null)
+            .toList();
+
+        // Calculate reputation for each officer
+        final officerReputations = <String, Map<String, dynamic>>{};
+        
+        for (var complaint in resolvedComplaints) {
+          final officerId = complaint.assignedOfficerId!;
+          final officerName = complaint.autoGovOfficerName ?? 'Unknown Officer';
+          
+          if (!officerReputations.containsKey(officerId)) {
+            officerReputations[officerId] = {
+              'name': officerName,
+              'totalComplaints': 0,
+              'resolvedComplaints': 0,
+              'positiveFeedbacks': 0,
+              'neutralFeedbacks': 0,
+              'negativeFeedbacks': 0,
+              'totalResponseTime': 0.0,
+            };
+          }
+
+          final data = officerReputations[officerId]!;
+          data['totalComplaints']++;
+          data['resolvedComplaints']++;
+          
+          // Add feedback
+          if (complaint.citizenFeedback != null) {
+            if (complaint.citizenFeedback == CitizenFeedback.positive) {
+              data['positiveFeedbacks']++;
+            } else if (complaint.citizenFeedback == CitizenFeedback.neutral) {
+              data['neutralFeedbacks']++;
+            } else if (complaint.citizenFeedback == CitizenFeedback.negative) {
+              data['negativeFeedbacks']++;
+            }
+          }
+
+          // Calculate response time
+          final responseTime = DateTime.now()
+              .difference(complaint.submittedAt)
+              .inHours
+              .toDouble();
+          data['totalResponseTime'] += responseTime;
+        }
+
+        // Calculate reputation scores
+        final officerList = officerReputations.entries.map((entry) {
+          final data = entry.value;
+          final totalFeedbacks = data['positiveFeedbacks'] + 
+                                 data['neutralFeedbacks'] + 
+                                 data['negativeFeedbacks'];
+          
+          // Calculate reputation score
+          double score = 50.0;
+          
+          // Feedback score (40%)
+          if (totalFeedbacks > 0) {
+            final feedbackScore = (data['positiveFeedbacks'] * 1.0 + 
+                                   data['neutralFeedbacks'] * 0.5) / totalFeedbacks;
+            score += (feedbackScore - 0.5) * 40;
+          }
+          
+          // Resolution rate (30%)
+          final resolutionRate = data['resolvedComplaints'] / data['totalComplaints'];
+          score += (resolutionRate - 0.5) * 30;
+          
+          // Response time (30%)
+          final avgResponseTime = data['totalResponseTime'] / data['totalComplaints'];
+          if (avgResponseTime <= 24) {
+            score += 30;
+          } else if (avgResponseTime > 72) {
+            score -= 30;
+          } else {
+            final timeRatio = (72 - avgResponseTime) / 48;
+            score += timeRatio * 30;
+          }
+          
+          return {
+            'id': entry.key,
+            'name': data['name'],
+            'score': score.round().clamp(0, 100),
+            'totalComplaints': data['totalComplaints'],
+            'positiveFeedbacks': data['positiveFeedbacks'],
+            'neutralFeedbacks': data['neutralFeedbacks'],
+            'negativeFeedbacks': data['negativeFeedbacks'],
+            'avgResponseTime': avgResponseTime,
+          };
+        }).toList();
+
+        // Sort by score descending
+        officerList.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+
+        if (officerList.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.stars_outlined, size: 80, color: Colors.grey),
+                SizedBox(height: 20),
+                Text(
+                  'No Official Reputation Data',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Reputation will be calculated once complaints are resolved',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.orange.shade50,
+              child: Row(
+                children: [
+                  Icon(Icons.stars, color: Colors.orange.shade700, size: 32),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Official Reputation',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Performance based on citizen feedback',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: officerList.length,
+                itemBuilder: (context, index) {
+                  final officer = officerList[index];
+                  return _buildOfficerReputationCard(officer, index + 1);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOfficerReputationCard(Map<String, dynamic> officer, int rank) {
+    final score = officer['score'] as int;
+    final name = officer['name'] as String;
+    final totalComplaints = officer['totalComplaints'] as int;
+    final positiveFeedbacks = officer['positiveFeedbacks'] as int;
+    final neutralFeedbacks = officer['neutralFeedbacks'] as int;
+    final negativeFeedbacks = officer['negativeFeedbacks'] as int;
+    final avgResponseTime = officer['avgResponseTime'] as double;
+
+    Color scoreColor;
+    String tier;
+    if (score >= 80) {
+      scoreColor = Colors.green;
+      tier = 'Excellent';
+    } else if (score >= 60) {
+      scoreColor = Colors.blue;
+      tier = 'Good';
+    } else if (score >= 40) {
+      scoreColor = Colors.orange;
+      tier = 'Average';
+    } else {
+      scoreColor = Colors.red;
+      tier = 'Needs Improvement';
+    }
+
+    final totalFeedbacks = positiveFeedbacks + neutralFeedbacks + negativeFeedbacks;
+    final positiveRate = totalFeedbacks > 0 
+        ? ((positiveFeedbacks / totalFeedbacks) * 100).toStringAsFixed(0)
+        : '0';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: scoreColor, width: 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: scoreColor.withOpacity(0.2),
+                  child: Text(
+                    '#$rank',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: scoreColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        tier,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scoreColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: scoreColor, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.star, color: scoreColor, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        score.toString(),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: scoreColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildReputationStat(
+                  Icons.assignment,
+                  totalComplaints.toString(),
+                  'Total',
+                  Colors.blue,
+                ),
+                _buildReputationStat(
+                  Icons.sentiment_satisfied,
+                  '$positiveRate%',
+                  'Positive',
+                  Colors.green,
+                ),
+                _buildReputationStat(
+                  Icons.access_time,
+                  '${avgResponseTime.toStringAsFixed(0)}h',
+                  'Avg Time',
+                  Colors.orange,
+                ),
+              ],
+            ),
+            if (totalFeedbacks > 0) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text('Feedback: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                  Text('😊 $positiveFeedbacks', style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Text('😐 $neutralFeedbacks', style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Text('😞 $negativeFeedbacks', style: const TextStyle(fontSize: 16)),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReputationStat(IconData icon, String value, String label, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
   Widget _buildComplaintCard(Complaint complaint) {
     final severityColor = _getSeverityColor(complaint.severity);
     
@@ -782,6 +1133,90 @@ class _AdminScreenState extends State<AdminScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              // Trust & Reputation System - Admin View
+              if (complaint.trustStatus != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _getTrustStatusColor(complaint.trustStatus!).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _getTrustStatusColor(complaint.trustStatus!),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getTrustStatusIcon(complaint.trustStatus!),
+                        size: 16,
+                        color: _getTrustStatusColor(complaint.trustStatus!),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Trust: ${complaint.trustStatus!.internalLabel}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _getTrustStatusColor(complaint.trustStatus!),
+                        ),
+                      ),
+                      // Request Clarification for MEDIUM or LOW trust (any severity)
+                      if ((complaint.trustStatus == TrustStatus.medium || 
+                           complaint.trustStatus == TrustStatus.low) &&
+                          complaint.clarificationRequest == null) ...[
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => _requestClarification(complaint),
+                          icon: const Icon(Icons.help_outline, size: 14),
+                          label: const Text('Request Clarification', style: TextStyle(fontSize: 11)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: const Size(0, 28),
+                            foregroundColor: Colors.orange,
+                          ),
+                        ),
+                      ],
+                      // Show clarification status
+                      if (complaint.clarificationRequest != null) ...[
+                        const Spacer(),
+                        Text(
+                          complaint.clarificationRequest!.isAnswered
+                              ? 'Clarified ✓'
+                              : 'Pending clarification',
+                          style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+                        ),
+                      ],
+                      // Request Validation for LOW trust
+                      if (complaint.trustStatus == TrustStatus.low &&
+                          complaint.validationRequest == null) ...[
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => _requestValidation(complaint),
+                          icon: const Icon(Icons.verified_user, size: 14),
+                          label: const Text('Request Validation', style: TextStyle(fontSize: 11)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: const Size(0, 28),
+                          ),
+                        ),
+                      ],
+                      if (complaint.validationRequest != null) ...[
+                        const Spacer(),
+                        Text(
+                          complaint.validationRequest!.citizenConfirmed == null
+                              ? 'Pending response'
+                              : (complaint.validationRequest!.citizenConfirmed!
+                                  ? 'Confirmed ✓'
+                                  : 'Not confirmed'),
+                          style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -843,6 +1278,148 @@ class _AdminScreenState extends State<AdminScreen> {
       case ComplaintStatus.rejected:
         return Colors.red;
     }
+  }
+
+  // Trust & Reputation System - Helper methods
+  Color _getTrustStatusColor(TrustStatus status) {
+    switch (status) {
+      case TrustStatus.high:
+        return Colors.green;
+      case TrustStatus.medium:
+        return Colors.orange;
+      case TrustStatus.low:
+        return Colors.blue;
+    }
+  }
+
+  IconData _getTrustStatusIcon(TrustStatus status) {
+    switch (status) {
+      case TrustStatus.high:
+        return Icons.verified;
+      case TrustStatus.medium:
+        return Icons.info;
+      case TrustStatus.low:
+        return Icons.search;
+    }
+  }
+
+  void _requestClarification(Complaint complaint) {
+    // Generate category-specific yes/no questions
+    final questions = _generateClarificationQuestions(complaint);
+    
+    final request = ClarificationRequest(
+      requestedBy: 'admin', // In real app, use actual admin ID
+      requestedAt: DateTime.now(),
+      questions: questions,
+    );
+
+    complaint.clarificationRequest = request;
+    final provider = Provider.of<ComplaintProvider>(context, listen: false);
+    provider.updateComplaint(complaint);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ Clarification request sent to citizen'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+
+    setState(() {});
+  }
+
+  List<ClarificationQuestion> _generateClarificationQuestions(Complaint complaint) {
+    // Generate 3-4 yes/no questions based on category, severity, and trust status
+    final List<ClarificationQuestion> questions = [];
+
+    // Common questions
+    questions.add(ClarificationQuestion(
+      question: 'Is this issue currently affecting you or your area?',
+    ));
+
+    questions.add(ClarificationQuestion(
+      question: 'Have you personally witnessed or experienced this problem?',
+    ));
+
+    // Severity-specific questions for Critical
+    if (complaint.severity == 'Critical') {
+      questions.add(ClarificationQuestion(
+        question: 'Is there an immediate risk to life or property?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Does this require emergency response within hours?',
+      ));
+    }
+    // Severity-specific questions for Low
+    else if (complaint.severity == 'Low') {
+      questions.add(ClarificationQuestion(
+        question: 'Is this issue causing any inconvenience to daily activities?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Can this issue wait for scheduled maintenance?',
+      ));
+    }
+    // Category-specific questions for Medium/High severity
+    else if (complaint.category.contains('Road')) {
+      questions.add(ClarificationQuestion(
+        question: 'Is the road completely blocked or just partially damaged?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Are vehicles able to pass through the affected area?',
+      ));
+    } else if (complaint.category.contains('Water')) {
+      questions.add(ClarificationQuestion(
+        question: 'Is the water supply completely stopped?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Does this affect multiple households in your area?',
+      ));
+    } else if (complaint.category.contains('Electricity') || complaint.category.contains('Streetlight')) {
+      questions.add(ClarificationQuestion(
+        question: 'Is the entire street/area affected?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Has this issue been reported to the electricity department before?',
+      ));
+    } else if (complaint.category.contains('Waste') || complaint.category.contains('Sanitation')) {
+      questions.add(ClarificationQuestion(
+        question: 'Has the waste been accumulating for more than 3 days?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Is there a health hazard due to the waste?',
+      ));
+    } else {
+      questions.add(ClarificationQuestion(
+        question: 'Is immediate action required for this issue?',
+      ));
+      questions.add(ClarificationQuestion(
+        question: 'Does this issue affect multiple people?',
+      ));
+    }
+
+    return questions.take(4).toList(); // Return max 4 questions
+  }
+
+  void _requestValidation(Complaint complaint) {
+    // Create validation request
+    final request = ValidationRequest(
+      requestedBy: 'admin', // In real app, use actual admin/official ID
+      requestedAt: DateTime.now(),
+      question: 'Please confirm if this complaint is accurate.',
+    );
+
+    // Update complaint
+    complaint.validationRequest = request;
+    final provider = Provider.of<ComplaintProvider>(context, listen: false);
+    provider.updateComplaint(complaint);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ Validation request sent to citizen'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+
+    setState(() {});
   }
 
   void _showClearConfirmation(BuildContext context) {

@@ -1,3 +1,6 @@
+import 'trust_score.dart';
+import 'citizen_feedback.dart';
+
 class Complaint {
   final String id;
   final String title;
@@ -26,6 +29,13 @@ class Complaint {
   DateTime? autoGovSlaDeadline;
   bool escalatedToHead; // Flag to track if escalated to department head
   String? escalationReason; // Reason for escalation
+  
+  // Trust & Reputation System fields (optional, never blocks complaints)
+  int? trustScore; // Internal trust score (0-100), NOT shown to citizens
+  TrustStatus? trustStatus; // HIGH/MEDIUM/LOW - shown as soft label when official assigned
+  CitizenFeedback? citizenFeedback; // Emoji feedback after resolution
+  ValidationRequest? validationRequest; // Official-initiated validation (LOW trust only)
+  ClarificationRequest? clarificationRequest; // Yes/No questions for MEDIUM trust
 
   Complaint({
     required this.id,
@@ -53,6 +63,11 @@ class Complaint {
     this.autoGovSlaDeadline,
     this.escalatedToHead = false,
     this.escalationReason,
+    this.trustScore,
+    this.trustStatus,
+    this.citizenFeedback,
+    this.validationRequest,
+    this.clarificationRequest,
   }) : proofChain = proofChain ?? [];
 
   void addProof(ProofChainEntry proof) {
@@ -85,6 +100,11 @@ class Complaint {
         'autoGovSlaDeadline': autoGovSlaDeadline?.toIso8601String(),
         'escalatedToHead': escalatedToHead,
         'escalationReason': escalationReason,
+        'trustScore': trustScore,
+        'trustStatus': trustStatus?.toString(),
+        'citizenFeedback': citizenFeedback?.toString(),
+        'validationRequest': validationRequest?.toJson(),
+        'clarificationRequest': clarificationRequest?.toJson(),
       };
 
   factory Complaint.fromJson(Map<String, dynamic> json) => Complaint(
@@ -121,6 +141,24 @@ class Complaint {
             : null,
         escalatedToHead: json['escalatedToHead'] ?? false,
         escalationReason: json['escalationReason'],
+        trustScore: json['trustScore'],
+        trustStatus: json['trustStatus'] != null
+            ? TrustStatus.values.firstWhere(
+                (e) => e.toString() == json['trustStatus'],
+                orElse: () => TrustStatus.medium,
+              )
+            : null,
+        citizenFeedback: json['citizenFeedback'] != null
+            ? CitizenFeedback.values.firstWhere(
+                (e) => e.toString() == json['citizenFeedback'],
+              )
+            : null,
+        validationRequest: json['validationRequest'] != null
+            ? ValidationRequest.fromJson(json['validationRequest'])
+            : null,
+        clarificationRequest: json['clarificationRequest'] != null
+            ? ClarificationRequest.fromJson(json['clarificationRequest'])
+            : null,
       );
 }
 

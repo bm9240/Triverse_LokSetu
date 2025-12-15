@@ -7,7 +7,9 @@ import 'package:uuid/uuid.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/grievbot_service.dart';
 import '../services/location_service.dart';
+import '../services/trust_service.dart';
 import '../models/complaint.dart';
+import '../models/trust_score.dart';
 import '../providers/complaint_provider.dart';
 
 /// GrievBot Screen - AI-powered complaint intake
@@ -382,13 +384,64 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
       );
       print('GrievBot: Created complaint object with ID: ${complaint.id}');
 
-      // Step 3: Submit to existing ComplaintProvider (integrates with AutoGov Engine)
-      print('GrievBot: Submitting to provider...');
+      // Step 3: Calculate Trust Score (never blocks complaint)
+      print('\n========== TRUST SCORE CALCULATION ==========');
       final provider = Provider.of<ComplaintProvider>(context, listen: false);
+      final citizenHistory = provider.getComplaintsByPhone(widget.citizenPhone);
+      
+      print('📊 Citizen History:');
+      print('   Total complaints: ${citizenHistory.length}');
+      if (citizenHistory.isNotEmpty) {
+        final todayCount = citizenHistory.where((c) {
+          final now = DateTime.now();
+          return c.submittedAt.year == now.year &&
+                 c.submittedAt.month == now.month &&
+                 c.submittedAt.day == now.day;
+        }).length;
+        print('   Complaints today: $todayCount');
+        
+        final recentCount = citizenHistory.where((c) {
+          return DateTime.now().difference(c.submittedAt).inMinutes <= 60;
+        }).length;
+        print('   Complaints in last hour: $recentCount');
+        
+        final lowTrustCount = citizenHistory.where((c) => 
+          c.trustStatus == TrustStatus.low).length;
+        print('   Previous low-trust complaints: $lowTrustCount');
+      }
+      
+      final trustFactors = TrustService.calculateTrustFactors(
+        complaint: complaint,
+        citizenHistory: citizenHistory,
+      );
+      
+      print('\n🔍 Trust Factor Breakdown:');
+      print('   Input Consistency: ${(trustFactors.inputConsistency * 100).toStringAsFixed(1)}% (weight: 20%)');
+      print('   Photo-Text Match: ${(trustFactors.photoTextMatch * 100).toStringAsFixed(1)}% (weight: 35%)');
+      print('   Evidence Presence: ${(trustFactors.evidencePresence * 100).toStringAsFixed(1)}% (weight: 15%)');
+      print('   Historical Behavior: ${(trustFactors.historicalBehavior * 100).toStringAsFixed(1)}% (weight: 20%)');
+      print('   Severity Misuse: ${(trustFactors.severityMisuse * 100).toStringAsFixed(1)}% (weight: 10%)');
+      
+      complaint.trustScore = trustFactors.calculateScore();
+      complaint.trustStatus = trustFactors.getTrustStatus(complaint.trustScore!);
+      
+      print('\n✅ FINAL TRUST SCORE: ${complaint.trustScore}/100');
+      print('   Status: ${complaint.trustStatus} (${_getTrustStatusLabel(complaint.trustStatus!)})');
+      if (complaint.trustScore! >= 80) {
+        print('   🟢 HIGH - High confidence complaint');
+      } else if (complaint.trustScore! >= 60) {
+        print('   🟠 MEDIUM - Additional clarification may help');
+      } else {
+        print('   🔵 LOW - Eligible for verification');
+      }
+      print('=============================================\n');
+
+      // Step 4: Submit to existing ComplaintProvider (integrates with AutoGov Engine)
+      print('GrievBot: Submitting to provider...');
       await provider.addComplaint(complaint);
       print('GrievBot: Complaint added successfully');
 
-      // Step 4: Show success and navigate back
+      // Step 5: Show success and navigate back
       if (!mounted) return;
       
       await _showSuccessDialog(
@@ -853,5 +906,17 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
         ),
       ),
     );
+  }
+
+  /// Get trust status label for display
+  String _getTrustStatusLabel(TrustStatus status) {
+    switch (status) {
+      case TrustStatus.high:
+        return 'HIGH';
+      case TrustStatus.medium:
+        return 'MEDIUM';
+      case TrustStatus.low:
+        return 'LOW';
+    }
   }
 }
