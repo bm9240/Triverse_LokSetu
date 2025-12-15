@@ -171,6 +171,11 @@ class DecisionEngine {
       'emergency',
       'safety',
       'accident',
+      'harass',
+      'assault',
+      'crime',
+      'attack',
+      'threat',
     ];
     final categoryLower = category.toLowerCase();
     return critical.any((c) => categoryLower.contains(c));
@@ -215,9 +220,9 @@ class DecisionEngine {
   ) {
     Duration baseSLA = priority.defaultSLA;
     
-    // Adjust for critical categories
+    // Adjust for critical categories - keep minimum 10 minutes for P1 safety cases
     if (_isCriticalCategory(category) && urgency == UrgencyLevel.critical) {
-      return Duration(hours: max(2, baseSLA.inHours ~/ 2));
+      return Duration(minutes: max(10, baseSLA.inMinutes ~/ 2));
     }
     
     return baseSLA;

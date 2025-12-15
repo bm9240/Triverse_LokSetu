@@ -24,6 +24,8 @@ class Complaint {
   String? autoGovWard;
   String? autoGovCity;
   DateTime? autoGovSlaDeadline;
+  bool escalatedToHead; // Flag to track if escalated to department head
+  String? escalationReason; // Reason for escalation
 
   Complaint({
     required this.id,
@@ -49,6 +51,8 @@ class Complaint {
     this.autoGovWard,
     this.autoGovCity,
     this.autoGovSlaDeadline,
+    this.escalatedToHead = false,
+    this.escalationReason,
   }) : proofChain = proofChain ?? [];
 
   void addProof(ProofChainEntry proof) {
@@ -79,6 +83,8 @@ class Complaint {
         'autoGovWard': autoGovWard,
         'autoGovCity': autoGovCity,
         'autoGovSlaDeadline': autoGovSlaDeadline?.toIso8601String(),
+        'escalatedToHead': escalatedToHead,
+        'escalationReason': escalationReason,
       };
 
   factory Complaint.fromJson(Map<String, dynamic> json) => Complaint(
@@ -113,6 +119,8 @@ class Complaint {
         autoGovSlaDeadline: json['autoGovSlaDeadline'] != null 
             ? DateTime.parse(json['autoGovSlaDeadline'])
             : null,
+        escalatedToHead: json['escalatedToHead'] ?? false,
+        escalationReason: json['escalationReason'],
       );
 }
 

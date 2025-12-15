@@ -11,6 +11,8 @@ class Officer {
   final double reliability; // 0.0 to 1.0
   final int activeComplaints;
   final double avgResolutionTime; // hours
+  final int resolvedPoints; // gamified score for completed complaints
+  final int penaltyPoints; // penalty points for SLA breaches
 
   Officer({
     required this.id,
@@ -22,6 +24,8 @@ class Officer {
     this.reliability = 0.85,
     this.activeComplaints = 0,
     this.avgResolutionTime = 24.0,
+    this.resolvedPoints = 0,
+    this.penaltyPoints = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +39,8 @@ class Officer {
       'reliability': reliability,
       'activeComplaints': activeComplaints,
       'avgResolutionTime': avgResolutionTime,
+      'resolvedPoints': resolvedPoints,
+      'penaltyPoints': penaltyPoints,
     };
   }
 
@@ -49,6 +55,8 @@ class Officer {
       reliability: (map['reliability'] as num?)?.toDouble() ?? 0.85,
       activeComplaints: map['activeComplaints'] ?? 0,
       avgResolutionTime: (map['avgResolutionTime'] as num?)?.toDouble() ?? 24.0,
+      resolvedPoints: map['resolvedPoints'] ?? 0,
+      penaltyPoints: map['penaltyPoints'] ?? 0,
     );
   }
 }
@@ -135,6 +143,30 @@ class OfficersFirestoreService {
     }
   }
 
+  /// Add a resolution point when an officer completes a complaint
+  Future<void> addResolutionPoint(String officerId) async {
+    try {
+      await _db.collection(officersCollection).doc(officerId).update({
+        'resolvedPoints': FieldValue.increment(1),
+      });
+      print('✅ Added resolution point for officer: $officerId');
+    } catch (e) {
+      print('⚠️ Error adding resolution point: $e');
+    }
+  }
+
+  /// Add penalty point when officer breaches SLA
+  Future<void> addPenaltyPoint(String officerId) async {
+    try {
+      await _db.collection(officersCollection).doc(officerId).update({
+        'penaltyPoints': FieldValue.increment(1),
+      });
+      print('⚠️ Added penalty point for officer: $officerId (SLA breach)');
+    } catch (e) {
+      print('⚠️ Error adding penalty point: $e');
+    }
+  }
+
   /// Update officer availability status
   Future<void> updateOfficerAvailability(String officerId, bool isAvailable) async {
     try {
@@ -190,6 +222,8 @@ class OfficersFirestoreService {
             reliability: 0.75 + (i * 0.05),
             activeComplaints: 0,
             avgResolutionTime: 24.0 - (i * 2),
+            resolvedPoints: 0,
+            penaltyPoints: 0,
           );
 
           await _db

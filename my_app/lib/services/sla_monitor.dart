@@ -2,6 +2,9 @@ import 'dart:async';
 import '../models/autogov_complaint.dart';
 import 'audit_log_service.dart';
 import 'escalation_engine.dart';
+import 'officers_firestore_service.dart';
+import 'complaint_service.dart';
+import 'firestore_service.dart';
 
 /// Time-Driven SLA Monitor
 /// Asynchronously monitors SLA deadlines and triggers escalations
@@ -130,14 +133,51 @@ class SLAMonitor {
         'breach_time': tracking.breachTime.toString(),
         'overdue_by': DateTime.now().difference(complaint.slaDeadline!).toString(),
         'priority': complaint.priorityLevel.toString(),
+        'officer_id': tracking.officerId ?? 'none',
       },
     );
+
+    // Penalize officer with -1 point for SLA breach
+    if (tracking.officerId != null) {
+      _penalizeOfficer(tracking.officerId!);
+    }
 
     // Trigger escalation
     _escalationEngine.triggerEscalation(
       complaint,
       'SLA breach: Deadline exceeded',
     );
+
+    // Mark complaint as escalated and notify citizen
+    _markComplaintEscalated(complaint.complaintId, 'SLA deadline exceeded - escalated to department head');
+  }
+
+  /// Penalize officer for SLA breach
+  Future<void> _penalizeOfficer(String officerId) async {
+    try {
+      await OfficersFirestoreService().addPenaltyPoint(officerId);
+      print('⚠️ Officer $officerId penalized for SLA breach (-1 point)');
+    } catch (e) {
+      print('❌ Failed to penalize officer: $e');
+    }
+  }
+
+  /// Mark complaint as escalated to head and sync to Firestore
+  Future<void> _markComplaintEscalated(String complaintId, String reason) async {
+    try {
+      // Update in ComplaintService
+      final complaint = ComplaintService().getComplaintById(complaintId);
+      if (complaint != null) {
+        complaint.escalatedToHead = true;
+        complaint.escalationReason = reason;
+        await ComplaintService().saveComplaints();
+        await FirestoreService().upsertComplaint(complaint);
+        print('✅ Complaint $complaintId marked as escalated to head');
+        print('📢 Citizen notification: Matter escalated to department head due to SLA breach');
+      }
+    } catch (e) {
+      print('❌ Failed to mark complaint as escalated: $e');
+    }
   }
 
   /// Start global monitoring loop

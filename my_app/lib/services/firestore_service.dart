@@ -69,7 +69,7 @@ class FirestoreService {
       'citizenPhone': c.citizenPhone,
       'imagePath': c.imagePath,
       'status': c.status.toString(),
-      'proofChain': [], // ProofChain stored separately, not in Firestore
+      'proofChain': c.proofChain.map((p) => p.toJson()).toList(),
       'autoGovDepartment': c.autoGovDepartment,
       'autoGovPriority': c.autoGovPriority,
       'assignedOfficerId': c.assignedOfficerId, // Dynamic officer reference
@@ -78,6 +78,8 @@ class FirestoreService {
       'autoGovWard': c.autoGovWard,
       'autoGovCity': c.autoGovCity,
       'autoGovSlaDeadline': c.autoGovSlaDeadline?.toIso8601String(),
+      'escalatedToHead': c.escalatedToHead,
+      'escalationReason': c.escalationReason,
     };
   }
 
@@ -102,7 +104,10 @@ class FirestoreService {
       citizenPhone: map['citizenPhone'] ?? '',
       imagePath: map['imagePath'],
       status: _parseStatus(map['status']),
-      proofChain: [], // ProofChain handled separately, not loaded from Firestore
+        proofChain: (map['proofChain'] as List<dynamic>?)
+            ?.map((e) => ProofChainEntry.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+          [],
       autoGovDepartment: map['autoGovDepartment'],
       autoGovPriority: map['autoGovPriority'],
       assignedOfficerId: map['assignedOfficerId'], // Dynamic officer reference
@@ -113,6 +118,8 @@ class FirestoreService {
       autoGovSlaDeadline: map['autoGovSlaDeadline'] != null 
           ? DateTime.parse(map['autoGovSlaDeadline'])
           : null,
+      escalatedToHead: map['escalatedToHead'] ?? false,
+      escalationReason: map['escalationReason'],
     );
   }
 

@@ -174,7 +174,7 @@ extension PriorityLevelExtension on PriorityLevel {
   Duration get defaultSLA {
     switch (this) {
       case PriorityLevel.p1:
-        return const Duration(hours: 6);
+        return const Duration(minutes: 10); // Critical safety - 10 minutes
       case PriorityLevel.p2:
         return const Duration(days: 2);
       case PriorityLevel.p3:
