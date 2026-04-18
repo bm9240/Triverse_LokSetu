@@ -4,7 +4,7 @@ import '../providers/complaint_provider.dart';
 import '../models/complaint.dart';
 import 'complaint_detail_screen.dart';
 import 'grievbot_screen.dart';
-import 'easyform_screen.dart';
+import 'farmer_scheme_chatbot_screen.dart';
 
 class CitizenScreen extends StatefulWidget {
   const CitizenScreen({super.key});
@@ -103,7 +103,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
               ),
             ),
             child: const Text(
-              'View My Complaints',
+              'Login',
               style: TextStyle(fontSize: 16),
             ),
           ),
@@ -169,11 +169,36 @@ class _CitizenScreenState extends State<CitizenScreen> {
                   },
                   icon: const Icon(Icons.smart_toy, size: 28),
                   label: const Text(
-                    '🤖 AI Complaint Assistant (Easy)',
+                    'AI Complaint Assistant',
                     style: TextStyle(fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    minimumSize: const Size(250, 56),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FarmerSchemeChatbotScreen(
+                          citizenPhone: _phoneNumber,
+                          citizenName: 'Citizen',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.agriculture, size: 28),
+                  label: const Text(
+                    'Farmer Support Chatbot',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     minimumSize: const Size(250, 56),

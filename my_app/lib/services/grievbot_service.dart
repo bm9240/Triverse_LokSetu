@@ -164,7 +164,7 @@ RULES:
 3. Title MUST be different from issueType/category - make it specific and descriptive
 4. Title format: "[Specific Issue Description]" (e.g., "Broken Road Near School", "Streetlight Outage in Lane 5")
 5. AUTOMATICALLY classify into issueType - user never selects category
-6. Use NLP to infer the correct category from user's language (Hindi/English/Hinglish)
+6. Use NLP to infer the correct category from user's language (Hindi/English/Marathi)
 7. If unsure about category, use "Other Civic Issue" - NEVER reject a complaint
 8. Extract location from input, or use: "${location ?? 'Location not provided'}"
 9. **CRITICALLY IMPORTANT - ASSESS SEVERITY CAREFULLY**:

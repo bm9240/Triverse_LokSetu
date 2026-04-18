@@ -44,7 +44,7 @@ Located in: `lib/services/trust_service.dart`
 
 #### What is NOT Used (Inclusivity Principle):
 - ❌ Language quality or grammar
-- ❌ English vs Hindi/Hinglish
+- ❌ English vs Hindi/Marathi
 - ❌ Typing skills
 - ❌ Device or camera quality
 

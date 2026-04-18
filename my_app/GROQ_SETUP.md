@@ -91,7 +91,7 @@ Other options in `grievbot_service.dart`:
 
 ## Features
 
-✅ **Multi-language support**: Hindi, English, Hinglish
+✅ **Multi-language support**: Hindi, English, Marathi
 ✅ **Multi-modal input**: Text, images (OCR), location
 ✅ **Smart categorization**: Automatically detects complaint type
 ✅ **Severity assessment**: Low, Medium, High, Critical

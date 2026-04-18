@@ -1,3 +1,13 @@
+## Language Support
+ - **Hindi**: Uses `hi_IN` locale
+ - **English**: Uses `en_IN` locale
+ - **Marathi**: Uses `mr_IN` locale
+### Real Device Testing
+...
+**Supports Hindi, English, and Marathi**
+**4. GrievBot Integration**
+Enhanced `lib/screens/grievbot_screen.dart` with:
+ - **Multi-language support**: Hindi (hi_IN), English (en_IN), Marathi (mr_IN)
 # 🎤 GrievBot with Speech-to-Text - Setup Guide
 
 ## Overview
@@ -60,7 +70,7 @@ flutter run
 
 ### 5. Test GrievBot Features
 1. Open app → Tap "GrievBot"
-2. Select language (Hindi/English/Hinglish)
+2. Select language (Hindi/English/Marathi)
 3. **Tap 🎤 microphone button** (real device only)
 4. Speak your complaint
 5. Watch text appear in real-time
@@ -105,7 +115,7 @@ Enhanced `lib/screens/grievbot_screen.dart` with:
 - **New microphone button** below the complaint text field
 - **Toggle functionality**: Tap to start listening, tap again to stop
 - **Live text display**: Recognized words appear instantly in the text field
-- **Multi-language support**: Hindi (hi_IN), English (en_IN), Hinglish (en_IN)
+ - **Multi-language support**: Hindi (hi_IN), English (en_IN), Marathi (mr_IN)
 - **Proper cleanup**: Stops listening when widget is disposed
 
 ## How It Works
@@ -161,7 +171,7 @@ Enhanced `lib/screens/grievbot_screen.dart` with:
 ### Real Device Testing
 - Speech recognition works **perfectly on real Android devices**
 - Requires microphone permission (granted automatically on first use)
-- Supports Hindi, English, and Hinglish
+  - Supports Hindi, English, and Marathi
 
 ### API Key Security
 - Never commit the `.env` file to Git
@@ -206,7 +216,7 @@ If you can't test on real device, demonstrate:
 ## Language Support
 - **Hindi**: Uses `hi_IN` locale
 - **English**: Uses `en_IN` locale
-- **Hinglish**: Uses `en_IN` locale
+- **Marathi**: Uses `mr_IN` locale
 
 ## Error Handling
 - Permission denied → Shows error message

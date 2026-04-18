@@ -46,7 +46,7 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
   bool _isListening = false;  // Track if STT is actively listening for complaint
   bool _isListeningDuration = false;  // Track if STT is actively listening for duration
   String? _currentLocation;
-  String _selectedLanguage = 'hindi'; // Default: hindi, english, hinglish
+  String _selectedLanguage = 'hindi'; // Default: hindi, english, marathi
 
   @override
   void initState() {
@@ -87,10 +87,10 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
         // Provide user-friendly error messages
         String errorMessage = error.errorMsg;
         if (errorMessage.contains('timeout')) {
-          errorMessage = _selectedLanguage == 'hindi' 
+          errorMessage = _selectedLanguage == 'hindi'
               ? 'कोई आवाज़ नहीं सुनाई दी। कृपया फिर से बोलें।'
-              : (_selectedLanguage == 'hinglish' 
-                  ? 'Koi awaaz nahi sunayi di. Please dobara bolo.'
+              : (_selectedLanguage == 'marathi'
+                  ? 'कोणतीही आवाज ऐकू आली नाही. कृपया पुन्हा बोला.'
                   : 'No speech detected. Please try speaking again.');
         }
         _showError(errorMessage);
@@ -115,8 +115,8 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
     String localeId = 'hi_IN';  // Hindi by default
     if (_selectedLanguage == 'english') {
       localeId = 'en_IN';
-    } else if (_selectedLanguage == 'hinglish') {
-      localeId = 'en_IN';  // Use English for Hinglish
+    } else if (_selectedLanguage == 'marathi') {
+      localeId = 'mr_IN';  // Use Marathi locale for Marathi
     }
 
     print('GrievBot STT: Starting to listen with locale $localeId');
@@ -172,10 +172,10 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
         // Provide user-friendly error messages
         String errorMessage = error.errorMsg;
         if (errorMessage.contains('timeout')) {
-          errorMessage = _selectedLanguage == 'hindi' 
+          errorMessage = _selectedLanguage == 'hindi'
               ? 'कोई आवाज़ नहीं सुनाई दी। कृपया फिर से बोलें।'
-              : (_selectedLanguage == 'hinglish' 
-                  ? 'Koi awaaz nahi sunayi di. Please dobara bolo.'
+              : (_selectedLanguage == 'marathi'
+                  ? 'कोणतीही आवाज ऐकू आली नाही. कृपया पुन्हा बोला.'
                   : 'No speech detected. Please try speaking again.');
         }
         _showError(errorMessage);
@@ -200,8 +200,8 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
     String localeId = 'hi_IN';  // Hindi by default
     if (_selectedLanguage == 'english') {
       localeId = 'en_IN';
-    } else if (_selectedLanguage == 'hinglish') {
-      localeId = 'en_IN';  // Use English for Hinglish
+    } else if (_selectedLanguage == 'marathi') {
+      localeId = 'mr_IN';  // Use Marathi locale for Marathi
     }
 
     print('GrievBot STT (Duration): Starting to listen with locale $localeId');
@@ -619,34 +619,34 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
           'gallerySubtitle': 'Choose existing photo',
           'textExtracted': 'Text extracted from image',
         };
-      case 'hinglish':
+      case 'marathi':
         return {
-          'title': '🤖 GrievBot - Complaint Helper',
-          'heading': 'Apni problem batao',
-          'subheading': 'Apni shikayat likho ya photo lo',
-          'describeLabel': 'Apni shikayat yahan likho:',
-          'describeHint': 'Kya hua batao...\n\nExamples:\n• "Mere ghar ke paas road toot gayi hai, 2 din se"\n• "Gali mein kuda nahi uthaya ja raha"\n• "Streetlight kharab hai kal se"',
-          'voiceButton': 'Bolkar Batao',
-          'voiceButtonStop': 'Band Karo',
-          'photoButton': 'Photo Lo',
-          'sttNotAvailable': 'Aapke phone mein bolkar likhna available nahi hai',
-          'additionalLabel': 'Kab se yeh problem hai?',
-          'additionalHint': 'Jaise: "2 din se", "1 week se", "aaj se", "kai mahino se"',
-          'submitButton': 'Shikayat Submit Karo',
-          'processing': 'Aapki shikayat register ho rahi hai...',
-          'validation': 'Apni problem batao ya photo add karo',
-          'successTitle': 'Shikayat Register Ho Gayi',
-          'complaintId': 'Complaint Number',
-          'category': 'Category',
-          'severity': 'Severity',
-          'duration': 'Duration',
-          'successMessage': 'Aapki shikayat register ho gayi hai. Jaldi action liya jayega.',
-          'imageSourceTitle': 'Photo kahan se lena hai?',
-          'camera': 'Camera',
-          'cameraSubtitle': 'Abhi photo lo',
-          'gallery': 'Gallery',
-          'gallerySubtitle': 'Purani photo select karo',
-          'textExtracted': 'Photo se text nikala gaya',
+          'title': '🤖 GrievBot - तक्रार सहाय्यक',
+          'heading': 'आपली समस्या सांगा',
+          'subheading': 'आपली तक्रार लिहा किंवा फोटो घ्या',
+          'describeLabel': 'आपली तक्रार येथे लिहा:',
+          'describeHint': 'काय झालं ते सांगा...\n\nउदाहरणे:\n• "घराजवळील रस्ता तुटला आहे, 2 दिवस"\n• "गल्लीत कचरा न उचलता आहे"\n• "स्ट्रीटलाइट कालपासून बंद आहे"',
+          'voiceButton': 'बोलून सांगा',
+          'voiceButtonStop': 'थांबवा',
+          'photoButton': 'फोटो घ्या',
+          'sttNotAvailable': 'तुमच्या फोनवर बोलून मजकूर उपलब्ध नाही',
+          'additionalLabel': 'ही समस्या किती काळापासून आहे?',
+          'additionalHint': 'उदा: "2 दिवस", "1 आठवडा", "आजपासून", "काही महिन्यांपासून"',
+          'submitButton': 'तक्रार सादर करा',
+          'processing': 'तुमची तक्रार नोंदविण्यात येत आहे...',
+          'validation': 'कृपया तुमची समस्या सांगा किंवा फोटो जोडा',
+          'successTitle': 'तक्रार नोंदवली गेली',
+          'complaintId': 'तक्रार क्रमांक',
+          'category': 'श्रेणी',
+          'severity': 'गंभीरता',
+          'duration': 'काळ',
+          'successMessage': 'तुमची तक्रार नोंदविली गेली आहे. लवकर कारवाई होईल.',
+          'imageSourceTitle': 'छायाचित्र स्रोत निवडा',
+          'camera': 'कॅमेरा',
+          'cameraSubtitle': 'आता फोटो घ्या',
+          'gallery': 'गॅलरी',
+          'gallerySubtitle': 'मागील फोटो निवडा',
+          'textExtracted': 'फोटोमधून मजकूर काढला गेला',
         };
       default:
         return _getText(); // Fallback to hindi
@@ -850,7 +850,7 @@ class _GrievBotScreenState extends State<GrievBotScreen> {
               children: [
                 _buildLanguageChip('hindi', 'हिं'),
                 _buildLanguageChip('english', 'Eng'),
-                _buildLanguageChip('hinglish', 'Hing'),
+                _buildLanguageChip('marathi', 'मर'),
               ],
             ),
           ),
